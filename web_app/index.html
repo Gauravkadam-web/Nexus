@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Nexus — AI Case Management Enterprise Web Application</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@500;600;700&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body { font-family: 'Inter', sans-serif; background-color: #0F172A; }
+    h1, h2, h3, h4 { font-family: 'Outfit', sans-serif; }
+    .code-font { font-family: 'JetBrains Mono', monospace; }
+    .nav-item.active {
+      background: rgba(99, 102, 241, 0.15);
+      color: #818CF8;
+      border-left: 3px solid #6366F1;
+    }
+    .nav-item:not(.active):hover {
+      background: rgba(255, 255, 255, 0.04);
+      color: #F8FAFC;
+    }
+    /* Custom thin scrollbar */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: #0F172A; }
+    ::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: #475569; }
+  </style>
+</head>
+<body class="h-screen w-screen overflow-hidden flex flex-col bg-[#0F172A] text-slate-100">
+
+  <!-- Global Enterprise Top Navigation Bar -->
+  <header class="h-14 bg-[#1E293B] border-b border-slate-700/80 px-4 flex items-center justify-between shrink-0 z-30 shadow-md">
+    <!-- Left: Brand & Mobile Sidebar Toggle -->
+    <div class="flex items-center gap-3">
+      <button onclick="toggleSidebar()" class="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-700/60 transition-all md:hidden">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
+      </button>
+      <div class="flex items-center gap-2.5 cursor-pointer" onclick="navigateTo('scr-03')">
+        <div class="w-8 h-8 rounded-lg bg-gradient-to-tr from-indigo-500 to-purple-600 flex items-center justify-center text-white font-bold text-base shadow-sm">
+          N
+        </div>
+        <div>
+          <div class="flex items-center gap-2">
+            <span class="font-bold text-white tracking-wide text-base">NEXUS</span>
+            <span class="px-1.5 py-0.5 rounded text-[10px] bg-indigo-500/20 text-indigo-300 font-semibold border border-indigo-500/30">ENTERPRISE</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Center: Global Smart Search -->
+    <div class="hidden md:flex items-center max-w-md w-full mx-6">
+      <div class="relative w-full">
+        <input type="text" placeholder="Search cases, root-causes, knowledge base, or telemetry (Press /)..." class="w-full bg-slate-900/90 text-sm text-slate-200 placeholder-slate-500 pl-9 pr-8 py-1.5 rounded-lg border border-slate-700 focus:outline-none focus:border-indigo-500 transition-all">
+        <svg class="w-4 h-4 text-slate-500 absolute left-3 top-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+        <span class="absolute right-2.5 top-2 text-[10px] font-semibold text-slate-500 bg-slate-800 px-1.5 py-0.5 rounded border border-slate-700">⌘K</span>
+      </div>
+    </div>
+
+    <!-- Right: Health Status, Direct Screen Link, Role Profile -->
+    <div class="flex items-center gap-3">
+      <!-- Backend Live Indicator -->
+      <div id="backend-indicator" class="hidden sm:flex items-center gap-2 px-2.5 py-1 rounded-full bg-slate-900 border border-slate-700 text-xs text-slate-300">
+        <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+        <span class="text-[11px] font-medium text-slate-400">API: <strong class="text-emerald-400">8080 (Online)</strong></span>
+      </div>
+
+      <!-- Full-screen Direct Popout -->
+      <a id="btn-popout" href="#" target="_blank" title="Open this screen in isolated full screen window" class="p-2 rounded-lg text-slate-400 hover:text-white hover:bg-slate-700/60 transition-all flex items-center gap-1 text-xs font-medium">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path></svg>
+        <span class="hidden lg:inline">Isolated View ↗</span>
+      </a>
+
+      <!-- Quick Notifications Trigger -->
+      <button onclick="navigateTo('scr-18')" class="relative p-2 rounded-lg text-slate-400 hover:text-white hover:bg-slate-700/60 transition-all">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path></svg>
+        <span class="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-rose-500"></span>
+      </button>
+
+      <!-- User Profile Chip -->
+      <div class="flex items-center gap-2 pl-2 border-l border-slate-700">
+        <div class="w-7 h-7 rounded-full bg-indigo-600 flex items-center justify-center font-bold text-xs text-white">
+          GB
+        </div>
+        <div class="hidden xl:block text-left">
+          <div class="text-xs font-semibold text-white leading-none">Gaurav Bhau</div>
+          <div class="text-[10px] text-slate-400 mt-0.5">Admin / Lead</div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- App Workspace Layout -->
+  <div class="flex-1 flex overflow-hidden relative">
+
+    <!-- Collapsible Left Navigation Sidebar -->
+    <aside id="sidebar" class="w-64 bg-[#1E293B]/95 border-r border-slate-700/80 flex flex-col shrink-0 overflow-y-auto transition-all duration-300 absolute md:static inset-y-0 left-0 z-20">
+      
+      <!-- Navigation Groups -->
+      <div class="p-3 space-y-5 flex-1">
+        
+        <!-- Section: Requester Experience -->
+        <div>
+          <div class="px-2 mb-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400">Requester Self-Service</div>
+          <nav class="space-y-0.5">
+            <a href="#scr-03" onclick="navigateTo('scr-03')" id="nav-scr-03" class="nav-item active flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium text-slate-300 transition-all">
+              <span class="text-base">📊</span>
+              <span>Requester Dashboard</span>
+            </a>
+            <a href="#scr-04" onclick="navigateTo('scr-04')" id="nav-scr-04" class="nav-item flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium text-slate-300 transition-all">
+              <span class="text-base">✨</span>
+              <span>Create Smart Case</span>
+            </a>
+            <a href="#scr-05" onclick="navigateTo('scr-05')" id="nav-scr-05" class="nav-item flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium text-slate-300 transition-all">
+              <span class="text-base">🔍</span>
+              <span>Case Tracker & Status</span>
+            </a>
+          </nav>
+        </div>
+
+        <!-- Section: Operator & Triage Studio -->
+        <div>
+          <div class="px-2 mb-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400">Operator Workstation</div>
+          <nav class="space-y-0.5">
+            <a href="#scr-06" onclick="navigateTo('scr-06')" id="nav-scr-06" class="nav-item flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium text-slate-300 transition-all">
+              <span class="text-base">⚡</span>
+              <span>Triage Workstation Feed</span>
+            </a>
+            <a href="#scr-07" onclick="navigateTo('scr-07')" id="nav-scr-07" class="nav-item flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium text-slate-300 transition-all">
+              <span class="text-base">🔬</span>
+              <span>3-Column Investigation</span>
+            </a>
+            <a href="#scr-08" onclick="navigateTo('scr-08')" id="nav-scr-08" class="nav-item flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium text-slate-300 transition-all">
+              <span class="text-base">📂</span>
+              <span>Evidence & Messages</span>
+            </a>
+            <a href="#scr-09" onclick="navigateTo('scr-09')" id="nav-scr-09" class="nav-item flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium text-slate-300 transition-all">
+              <span class="text-base">🤖</span>
+              <span>AI Copilot Smart Drafter</span>
+            </a>
+            <a href="#scr-10" onclick="navigateTo('scr-10')" id="nav-scr-10" class="nav-item flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium text-slate-300 transition-all">
+              <span class="text-base">🤝</span>
+              <span>Resolution & Closure</span>
+            </a>
+          </nav>
+        </div>
+
+        <!-- Section: Operations Leadership & SLA -->
+        <div>
+          <div class="px-2 mb-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400">Command & Risk Radar</div>
+          <nav class="space-y-0.5">
+            <a href="#scr-11" onclick="navigateTo('scr-11')" id="nav-scr-11" class="nav-item flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium text-slate-300 transition-all">
+              <span class="text-base">👑</span>
+              <span>Team Lead Command Hub</span>
+            </a>
+            <a href="#scr-12" onclick="navigateTo('scr-12')" id="nav-scr-12" class="nav-item flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium text-slate-300 transition-all">
+              <span class="text-base">🎯</span>
+              <span>SLA Risk Radar Console</span>
+            </a>
+            <a href="#scr-13" onclick="navigateTo('scr-13')" id="nav-scr-13" class="nav-item flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium text-slate-300 transition-all">
+              <span class="text-base">🧠</span>
+              <span>Problem Management (KEDB)</span>
+            </a>
+            <a href="#scr-14" onclick="navigateTo('scr-14')" id="nav-scr-14" class="nav-item flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium text-slate-300 transition-all">
+              <span class="text-base">📈</span>
+              <span>Executive Analytics & KPI</span>
+            </a>
+          </nav>
+        </div>
+
+        <!-- Section: Administration & Governance -->
+        <div>
+          <div class="px-2 mb-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400">Enterprise Administration</div>
+          <nav class="space-y-0.5">
+            <a href="#scr-15" onclick="navigateTo('scr-15')" id="nav-scr-15" class="nav-item flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium text-slate-300 transition-all">
+              <span class="text-base">👥</span>
+              <span>User & RBAC Management</span>
+            </a>
+            <a href="#scr-16" onclick="navigateTo('scr-16')" id="nav-scr-16" class="nav-item flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium text-slate-300 transition-all">
+              <span class="text-base">⚙️</span>
+              <span>SLA Policy Builder</span>
+            </a>
+            <a href="#scr-17" onclick="navigateTo('scr-17')" id="nav-scr-17" class="nav-item flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium text-slate-300 transition-all">
+              <span class="text-base">📜</span>
+              <span>SOC2 Audit Trail Ledger</span>
+            </a>
+            <a href="#scr-18" onclick="navigateTo('scr-18')" id="nav-scr-18" class="nav-item flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium text-slate-300 transition-all">
+              <span class="text-base">🔔</span>
+              <span>Global Notification Center</span>
+            </a>
+          </nav>
+        </div>
+
+        <!-- Section: Auth & Portals -->
+        <div class="pt-2 border-t border-slate-700/60">
+          <div class="px-2 mb-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400">Authentication</div>
+          <nav class="space-y-0.5">
+            <a href="#scr-01" onclick="navigateTo('scr-01')" id="nav-scr-01" class="nav-item flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium text-slate-300 transition-all">
+              <span class="text-base">🔐</span>
+              <span>Login Portal</span>
+            </a>
+            <a href="#scr-02" onclick="navigateTo('scr-02')" id="nav-scr-02" class="nav-item flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium text-slate-300 transition-all">
+              <span class="text-base">📝</span>
+              <span>Registration & Onboarding</span>
+            </a>
+          </nav>
+        </div>
+
+      </div>
+
+      <!-- Bottom System Status Footer -->
+      <div class="p-3 border-t border-slate-700/80 bg-slate-900/60 text-[11px] text-slate-400 space-y-1">
+        <div class="flex justify-between items-center">
+          <span>Spring Boot:</span>
+          <span class="text-slate-200 font-semibold">3.3.4 (Java 25)</span>
+        </div>
+        <div class="flex justify-between items-center">
+          <span>PostgreSQL:</span>
+          <span class="text-slate-200 font-semibold">18.0 (Flyway V8)</span>
+        </div>
+        <div class="flex justify-between items-center">
+          <span>Total Screens:</span>
+          <span class="text-indigo-400 font-bold">18 / 18 (100%)</span>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Main Full-Screen Native App Viewport -->
+    <main class="flex-1 bg-white h-full w-full overflow-hidden relative">
+      <iframe id="main-frame" src="/docs/stitch_screen_ui_generator_web/scr_03_requester_self_service_dashboard/code.html" class="w-full h-full border-0 bg-white" title="Nexus Application Screen"></iframe>
+    </main>
+
+  </div>
+
+  <script>
+    const screens = {
+      'scr-01': { url: '/docs/stitch_screen_ui_generator_web/scr_01_auth_login_portal_refined/code.html', title: 'SCR-01: Auth & Login Portal' },
+      'scr-02': { url: '/docs/stitch_screen_ui_generator_web/scr_02_user_registration_onboarding/code.html', title: 'SCR-02: User Registration & Onboarding' },
+      'scr-03': { url: '/docs/stitch_screen_ui_generator_web/scr_03_requester_self_service_dashboard/code.html', title: 'SCR-03: Requester Self-Service Dashboard' },
+      'scr-04': { url: '/docs/stitch_screen_ui_generator_web/scr_04_smart_case_creation_wizard/code.html', title: 'SCR-04: Smart Case Creation Wizard' },
+      'scr-05': { url: '/docs/stitch_screen_ui_generator_web/scr_05_requester_case_tracker_confirmation/code.html', title: 'SCR-05: Requester Case Tracker & Confirmation' },
+      'scr-06': { url: '/docs/stitch_screen_ui_generator_web/scr_06_operator_triage_workstation_feed/code.html', title: 'SCR-06: Operator Triage Workstation Feed' },
+      'scr-07': { url: '/docs/stitch_screen_ui_generator_web/scr_07_operator_3_column_investigation_studio/code.html', title: 'SCR-07: Operator 3-Column Investigation Studio' },
+      'scr-08': { url: '/docs/stitch_screen_ui_generator_web/scr_08_case_collaboration_evidence_hub_refined/code.html', title: 'SCR-08: Case Collaboration & Evidence Hub' },
+      'scr-09': { url: '/docs/stitch_screen_ui_generator_web/scr_09_ai_copilot_smart_drafter_refined/code.html', title: 'SCR-09: AI Copilot Smart Drafter' },
+      'scr-10': { url: '/docs/stitch_screen_ui_generator_web/scr_10_resolution_proposal_closure_modal_refined/code.html', title: 'SCR-10: Resolution Proposal & Closure Modal' },
+      'scr-11': { url: '/docs/stitch_screen_ui_generator_web/scr_11_team_lead_command_workload_monitor/code.html', title: 'SCR-11: Team Lead Command & Workload Monitor' },
+      'scr-12': { url: '/docs/stitch_screen_ui_generator_web/scr_12_sla_risk_radar_escalation_console/code.html', title: 'SCR-12: SLA Risk Radar & Escalation Console' },
+      'scr-13': { url: '/docs/stitch_screen_ui_generator_web/scr_13_problem_management_root_cause_hub_refined/code.html', title: 'SCR-13: Problem Management & Root Cause Hub' },
+      'scr-14': { url: '/docs/stitch_screen_ui_generator_web/scr_14_executive_analytics_kpi_command_center/code.html', title: 'SCR-14: Executive Analytics & KPI Command Center' },
+      'scr-15': { url: '/docs/stitch_screen_ui_generator_web/scr_15_admin_configuration_user_management_refined/code.html', title: 'SCR-15: Admin Configuration & User Management' },
+      'scr-16': { url: '/docs/stitch_screen_ui_generator_web/scr_16_admin_sla_policy_escalation_rule_builder_refined/code.html', title: 'SCR-16: Admin SLA Policy & Escalation Builder' },
+      'scr-17': { url: '/docs/stitch_screen_ui_generator_web/scr_17_audit_trail_immutable_timeline_explorer_refined/code.html', title: 'SCR-17: Audit Trail & Immutable Timeline Explorer' },
+      'scr-18': { url: '/docs/stitch_screen_ui_generator_web/scr_18_global_notification_center_refined/code.html', title: 'SCR-18: Global Notification Center' }
+    };
+
+    function navigateTo(screenKey) {
+      if (!screens[screenKey]) return;
+      
+      const screen = screens[screenKey];
+      const frame = document.getElementById('main-frame');
+      const popout = document.getElementById('btn-popout');
+      
+      frame.src = screen.url;
+      popout.href = screen.url;
+      document.title = screen.title + ' — Nexus Enterprise';
+
+      // Update sidebar active classes
+      document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+      const activeNav = document.getElementById('nav-' + screenKey);
+      if (activeNav) activeNav.classList.add('active');
+
+      // Update URL hash without refresh
+      window.location.hash = screenKey;
+
+      // Close mobile sidebar if open
+      if (window.innerWidth < 768) {
+        document.getElementById('sidebar').classList.add('hidden');
+      }
+    }
+
+    function toggleSidebar() {
+      const sidebar = document.getElementById('sidebar');
+      sidebar.classList.toggle('hidden');
+    }
+
+    // Handle hash on page load
+    window.addEventListener('load', () => {
+      const hash = window.location.hash.replace('#', '');
+      if (hash && screens[hash]) {
+        navigateTo(hash);
+      } else {
+        navigateTo('scr-03'); // Default to Requester Dashboard
+      }
+    });
+
+    // Handle browser back/forward buttons
+    window.addEventListener('hashchange', () => {
+      const hash = window.location.hash.replace('#', '');
+      if (hash && screens[hash]) {
+        navigateTo(hash);
+      }
+    });
+  </script>
+</body>
+</html>

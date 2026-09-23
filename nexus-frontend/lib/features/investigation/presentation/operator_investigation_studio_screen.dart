@@ -5,9 +5,15 @@ import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_typography.dart';
-import '../../../core/widgets/nexus_button.dart';
+import '../../../core/widgets/app_shell.dart';
 import '../../../core/widgets/responsive_layout.dart';
-import '../../../core/widgets/status_badge.dart';
+import '../../../core/widgets/state_view_helpers.dart';
+import '../../case/data/case_repository.dart';
+import '../../case/domain/case_model.dart';
+import '../../collaboration/data/collaboration_api.dart';
+import '../../collaboration/domain/collaboration_models.dart';
+import '../data/investigation_api.dart';
+import '../domain/investigation_model.dart';
 
 /// SCR-07: Operator Investigation Studio Screen
 /// Deep investigation workbench with live activity stream, AI drafter assistant,
@@ -28,12 +34,92 @@ class _OperatorInvestigationStudioScreenState extends ConsumerState<OperatorInve
   final TextEditingController _composerController = TextEditingController();
   bool _isInternalNote = false;
   bool _isDrafterDismissed = false;
-  bool _isDraftApplied = false;
   int _selectedTab = 1; // 0: AI Triage, 1: Activity, 2: Tasks
-  int _currentNavIndex = 1; // Studio tab active
 
-  final String _draftText =
+  CaseModel? _caseDetail;
+  AiAnalysisModel? _aiAnalysis;
+  List<MessageModel> _messages = [];
+  List<InternalNoteModel> _notes = [];
+  List<InvestigationTaskModel> _tasks = [];
+  bool _isLoading = false;
+  String? _errorMessage;
+
+  String _draftText =
       "We have identified packet drop during the Okta token validation stage on ingress pod-04. Traffic has been routed to standby pod-02 while we rollback.";
+
+  @override
+  void initState() {
+    super.initState();
+    _loadStudioData();
+  }
+
+  Future<void> _loadStudioData() async {
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+
+    final caseId = widget.caseId;
+    final results = await Future.wait([
+      CaseRepository().getCaseDetail(caseId),
+      CaseRepository().getAiAnalysis(caseId),
+      CollaborationApi().getMessages(caseId),
+      CollaborationApi().getInternalNotes(caseId),
+      InvestigationApi().getTasks(caseId),
+    ]);
+
+    final caseRes = results[0] as dynamic;
+    final aiRes = results[1] as dynamic;
+    final msgRes = results[2] as dynamic;
+    final noteRes = results[3] as dynamic;
+    final taskRes = results[4] as dynamic;
+
+    if (mounted) {
+      if (caseRes.success && caseRes.data != null) {
+        setState(() {
+          _caseDetail = caseRes.data as CaseModel;
+          _aiAnalysis = aiRes.success && aiRes.data != null ? (aiRes.data as AiAnalysisModel) : null;
+          _messages = msgRes.success && msgRes.data != null ? (msgRes.data as List<MessageModel>) : [];
+          _notes = noteRes.success && noteRes.data != null ? (noteRes.data as List<InternalNoteModel>) : [];
+          _tasks = taskRes.success && taskRes.data != null ? (taskRes.data as List<InvestigationTaskModel>) : [];
+          if (_aiAnalysis != null && _aiAnalysis!.suggestedSteps.isNotEmpty) {
+            _draftText = _aiAnalysis!.suggestedSteps.join(' ');
+          }
+          _isLoading = false;
+        });
+      } else {
+        setState(() {
+          _errorMessage = caseRes.error ?? 'Failed to load case investigation context';
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _sendComposerMessage() async {
+    final text = _composerController.text.trim();
+    if (text.isEmpty) return;
+
+    if (_isInternalNote) {
+      final res = await CollaborationApi().addInternalNote(caseId: widget.caseId, content: text);
+      if (res.success && res.data != null) {
+        setState(() {
+          _notes.add(res.data!);
+          _composerController.clear();
+        });
+        _showFeedbackToast('Internal note logged', Icons.lock, const Color(0xFF0D9488));
+      }
+    } else {
+      final res = await CollaborationApi().sendMessage(caseId: widget.caseId, content: text);
+      if (res.success && res.data != null) {
+        setState(() {
+          _messages.add(res.data!);
+          _composerController.clear();
+        });
+        _showFeedbackToast('Message dispatched to requester', Icons.send, const Color(0xFF0D9488));
+      }
+    }
+  }
 
   @override
   void dispose() {
@@ -65,105 +151,17 @@ class _OperatorInvestigationStudioScreenState extends ConsumerState<OperatorInve
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFFAF8FF),
-      appBar: _buildAppBar(context),
-      body: SafeArea(
-        child: ResponsiveLayout(
-          mobileBody: _buildMobileBody(context),
-          desktopBody: _buildDesktopBody(context),
-        ),
-      ),
-      bottomNavigationBar: _buildBottomNav(context),
-    );
-  }
-
-  PreferredSizeWidget _buildAppBar(BuildContext context) {
-    return AppBar(
-      backgroundColor: Colors.white.withOpacity(0.9),
-      elevation: 0,
-      scrolledUnderElevation: 1,
-      leading: IconButton(
-        icon: const Icon(Icons.arrow_back, color: AppColors.textPrimary),
-        onPressed: () {
-          if (context.canPop()) {
-            context.pop();
-          } else {
-            context.go('/dashboard/operator/triage');
-          }
-        },
-      ),
-      titleSpacing: 0,
-      title: Row(
-        children: [
-          Container(
-            width: 32,
-            height: 32,
-            decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                colors: [Color(0xFF6366F1), Color(0xFF9333EA)],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: const Center(
-              child: Text(
-                'N',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 16,
-                  fontFamily: 'Outfit',
+    return AppShell(
+      currentPath: '/dashboard/operator',
+      title: 'Investigation Studio',
+      child: _isLoading
+          ? const NexusLoadingView(message: 'Loading case investigation workbench...')
+          : _errorMessage != null
+              ? NexusErrorView(message: _errorMessage!, onRetry: _loadStudioData)
+              : ResponsiveLayout(
+                  mobileBody: _buildMobileBody(context),
+                  desktopBody: _buildDesktopBody(context),
                 ),
-              ),
-            ),
-          ),
-          const SizedBox(width: AppSpacing.xs),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Nexus AI',
-                style: AppTypography.headlineSmall(context).copyWith(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 15,
-                ),
-              ),
-              Text(
-                'STUDIO // INVESTIGATION',
-                style: AppTypography.labelSmall(context).copyWith(
-                  color: AppColors.textMuted,
-                  letterSpacing: 1.0,
-                  fontSize: 8,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-      actions: [
-        IconButton(
-          onPressed: () => _showFeedbackToast('Search case context & telemetry', Icons.search, AppColors.primary),
-          icon: const Icon(Icons.search, color: AppColors.textSecondary, size: 20),
-        ),
-        IconButton(
-          onPressed: () {
-            context.push('/cases/${widget.caseId}/collaboration');
-          },
-          icon: const Icon(Icons.hub_outlined, color: Color(0xFF831ADA), size: 20),
-          tooltip: 'Evidence & Collaboration Hub',
-        ),
-        Padding(
-          padding: const EdgeInsets.only(right: AppSpacing.md),
-          child: CircleAvatar(
-            radius: 14,
-            backgroundColor: AppColors.primary.withOpacity(0.15),
-            child: const Text('EV', style: TextStyle(color: AppColors.primary, fontSize: 10, fontWeight: FontWeight.bold)),
-          ),
-        ),
-      ],
     );
   }
 
@@ -247,6 +245,22 @@ class _OperatorInvestigationStudioScreenState extends ConsumerState<OperatorInve
   }
 
   Widget _buildTopContextPanel() {
+    final caseNum = _caseDetail?.caseNumber ?? widget.caseId;
+    final priority = _caseDetail?.priority ?? 'HIGH';
+    final status = _caseDetail?.status ?? 'INVESTIGATING';
+    final title = _caseDetail?.title ?? 'Case Investigation';
+    final category = _caseDetail?.categoryName ?? 'System Core';
+
+    Color pColor = const Color(0xFF0284C7);
+    Color pBg = const Color(0xFFE0F2FE);
+    if (priority.toUpperCase().contains('CRITICAL')) {
+      pColor = const Color(0xFFE11D48);
+      pBg = const Color(0xFFFFE4E6);
+    } else if (priority.toUpperCase().contains('HIGH')) {
+      pColor = const Color(0xFFD97706);
+      pBg = const Color(0xFFFEF3C7);
+    }
+
     return Container(
       padding: const EdgeInsets.all(AppSpacing.md),
       decoration: BoxDecoration(
@@ -265,14 +279,14 @@ class _OperatorInvestigationStudioScreenState extends ConsumerState<OperatorInve
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
-            mainAxisAlignment: MainAxisAlignment.between,
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Row(
                 children: [
                   const Icon(Icons.terminal, size: 18, color: Color(0xFF4648D4)),
                   const SizedBox(width: 6),
                   Text(
-                    widget.caseId,
+                    caseNum,
                     style: AppTypography.codeSmall(context).copyWith(
                       fontWeight: FontWeight.bold,
                       color: AppColors.textPrimary,
@@ -285,13 +299,13 @@ class _OperatorInvestigationStudioScreenState extends ConsumerState<OperatorInve
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                     decoration: BoxDecoration(
-                      color: const Color(0xFFFFE4E6),
+                      color: pBg,
                       borderRadius: BorderRadius.circular(12),
                     ),
-                    child: const Text(
-                      'P1 CRITICAL',
+                    child: Text(
+                      priority,
                       style: TextStyle(
-                        color: Color(0xFFE11D48),
+                        color: pColor,
                         fontSize: 9,
                         fontWeight: FontWeight.bold,
                         letterSpacing: 0.5,
@@ -305,9 +319,9 @@ class _OperatorInvestigationStudioScreenState extends ConsumerState<OperatorInve
                       color: const Color(0xFFFEF3C7),
                       borderRadius: BorderRadius.circular(12),
                     ),
-                    child: const Text(
-                      'INVESTIGATING',
-                      style: TextStyle(
+                    child: Text(
+                      status,
+                      style: const TextStyle(
                         color: Color(0xFFD97706),
                         fontSize: 9,
                         fontWeight: FontWeight.bold,
@@ -321,7 +335,7 @@ class _OperatorInvestigationStudioScreenState extends ConsumerState<OperatorInve
           ),
           const SizedBox(height: AppSpacing.xs),
           Text(
-            'Authentication Gateway Timeout during SSO federation',
+            title,
             style: AppTypography.titleMedium(context).copyWith(
               fontWeight: FontWeight.bold,
               fontSize: 16,
@@ -329,12 +343,12 @@ class _OperatorInvestigationStudioScreenState extends ConsumerState<OperatorInve
           ),
           const SizedBox(height: AppSpacing.sm),
           Row(
-            mainAxisAlignment: MainAxisAlignment.between,
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFFFE4E6).withOpacity(0.5),
+                  color: const Color(0xFFFFE4E6).withValues(alpha: 0.5),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Row(
@@ -342,7 +356,7 @@ class _OperatorInvestigationStudioScreenState extends ConsumerState<OperatorInve
                     const Icon(Icons.hourglass_top, size: 14, color: Color(0xFFE11D48)),
                     const SizedBox(width: 4),
                     Text(
-                      '02:45:10 rem.',
+                      'SLA Active',
                       style: AppTypography.codeSmall(context).copyWith(
                         color: const Color(0xFFE11D48),
                         fontWeight: FontWeight.bold,
@@ -363,7 +377,7 @@ class _OperatorInvestigationStudioScreenState extends ConsumerState<OperatorInve
                     const Icon(Icons.dns, size: 14, color: Color(0xFF006194)),
                     const SizedBox(width: 4),
                     Text(
-                      'SSO-Cluster-04',
+                      category,
                       style: AppTypography.labelSmall(context).copyWith(
                         color: AppColors.textSecondary,
                         fontWeight: FontWeight.w600,
@@ -389,8 +403,8 @@ class _OperatorInvestigationStudioScreenState extends ConsumerState<OperatorInve
       child: Row(
         children: [
           _buildRailTab(0, '✨ AI Triage'),
-          _buildRailTab(1, 'Forum Activity (3)'),
-          _buildRailTab(2, 'Checklist (3)'),
+          _buildRailTab(1, 'Activity (${_messages.length + _notes.length})'),
+          _buildRailTab(2, 'Tasks (${_tasks.length})'),
         ],
       ),
     );
@@ -436,62 +450,49 @@ class _OperatorInvestigationStudioScreenState extends ConsumerState<OperatorInve
   }
 
   Widget _buildLiveActivityStream() {
+    if (_messages.isEmpty && _notes.isEmpty) {
+      return const Padding(
+        padding: EdgeInsets.symmetric(vertical: AppSpacing.md),
+        child: NexusEmptyView(
+          title: 'No Activity Yet',
+          message: 'No messages or internal notes logged on this case.',
+          icon: Icons.chat_bubble_outline,
+        ),
+      );
+    }
+
     return Column(
       children: [
-        // Requester Message
-        _buildActivityCard(
-          authorName: 'Sarah Jenkins',
-          roleText: 'Requester • DevOps Team',
-          timeText: '10:14 AM',
-          avatarLetter: 'S',
-          avatarColor: const Color(0xFF6366F1),
-          content:
-              'Users on Okta SSO are experiencing 504 Gateway timeouts when authenticating through the regional gateway. Issue surfaced right after the 10:00 AM canary deployment.',
-          attachmentName: 'sso_trace_error.log',
-          attachmentSize: '1.4 MB',
-        ),
-        const SizedBox(height: AppSpacing.sm),
-        // System Event
-        Container(
-          padding: const EdgeInsets.all(AppSpacing.sm),
-          decoration: BoxDecoration(
-            color: const Color(0xFFFFE4E6).withOpacity(0.6),
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Icon(Icons.priority_high, size: 18, color: Color(0xFFE11D48)),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'Priority Escalated • MEDIUM to CRITICAL',
-                      style: TextStyle(color: Color(0xFFE11D48), fontWeight: FontWeight.bold, fontSize: 11),
-                    ),
-                    Text(
-                      'System anomaly engine correlated 84 downstream microservice retries.',
-                      style: AppTypography.bodySmall(context).copyWith(fontSize: 11),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: AppSpacing.sm),
-        // Lead Operator Note
-        _buildActivityCard(
-          authorName: 'Elena Vance',
-          roleText: 'Lead Operator',
-          timeText: '10:22 AM',
-          avatarLetter: 'E',
-          avatarColor: const Color(0xFF831ADA),
-          content:
-              'Understood Sarah. Triage started. Checking Redis cache latency and Envoy ingress routes right now. Canary routing is being isolated to prevent spillover.',
-        ),
+        ..._messages.map((m) {
+          final initials = m.senderName.isNotEmpty ? m.senderName[0].toUpperCase() : 'U';
+          final timeStr = '${m.createdAt.hour.toString().padLeft(2, '0')}:${m.createdAt.minute.toString().padLeft(2, '0')}';
+          return Padding(
+            padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+            child: _buildActivityCard(
+              authorName: m.senderName,
+              roleText: m.senderRole,
+              timeText: timeStr,
+              avatarLetter: initials,
+              avatarColor: const Color(0xFF6366F1),
+              content: m.content,
+            ),
+          );
+        }),
+        ..._notes.map((n) {
+          final initials = n.authorName.isNotEmpty ? n.authorName[0].toUpperCase() : 'O';
+          final timeStr = '${n.createdAt.hour.toString().padLeft(2, '0')}:${n.createdAt.minute.toString().padLeft(2, '0')}';
+          return Padding(
+            padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+            child: _buildActivityCard(
+              authorName: '${n.authorName} (Internal)',
+              roleText: 'Internal Investigation Note',
+              timeText: timeStr,
+              avatarLetter: initials,
+              avatarColor: const Color(0xFF831ADA),
+              content: n.content,
+            ),
+          );
+        }),
       ],
     );
   }
@@ -527,7 +528,7 @@ class _OperatorInvestigationStudioScreenState extends ConsumerState<OperatorInve
             children: [
               CircleAvatar(
                 radius: 14,
-                backgroundColor: avatarColor.withOpacity(0.15),
+                backgroundColor: avatarColor.withValues(alpha: 0.15),
                 child: Text(
                   avatarLetter,
                   style: TextStyle(color: avatarColor, fontWeight: FontWeight.bold, fontSize: 11),
@@ -539,13 +540,13 @@ class _OperatorInvestigationStudioScreenState extends ConsumerState<OperatorInve
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Row(
-                      mainAxisAlignment: MainAxisAlignment.between,
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         Text(authorName, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
                         Text(timeText, style: AppTypography.codeSmall(context).copyWith(color: AppColors.textMuted, fontSize: 10)),
                       ],
                     ),
-                    Text(roleText, style: TextStyle(color: AppColors.textMuted, fontSize: 10)),
+                    Text(roleText, style: const TextStyle(color: AppColors.textMuted, fontSize: 10)),
                   ],
                 ),
               ),
@@ -579,7 +580,7 @@ class _OperatorInvestigationStudioScreenState extends ConsumerState<OperatorInve
                     Text(attachmentName, style: AppTypography.codeSmall(context).copyWith(fontSize: 11, fontWeight: FontWeight.w600)),
                     if (attachmentSize != null) ...[
                       const SizedBox(width: 4),
-                      Text('• $attachmentSize', style: TextStyle(color: AppColors.textMuted, fontSize: 10)),
+                      Text('• $attachmentSize', style: const TextStyle(color: AppColors.textMuted, fontSize: 10)),
                     ],
                     const SizedBox(width: 6),
                     const Icon(Icons.download, size: 14, color: AppColors.textMuted),
@@ -599,13 +600,13 @@ class _OperatorInvestigationStudioScreenState extends ConsumerState<OperatorInve
       decoration: BoxDecoration(
         color: const Color(0xFFFAF5FF),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFC084FC).withOpacity(0.35)),
+        border: Border.all(color: const Color(0xFFC084FC).withValues(alpha: 0.35)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
-            mainAxisAlignment: MainAxisAlignment.between,
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Row(
                 children: [
@@ -629,7 +630,7 @@ class _OperatorInvestigationStudioScreenState extends ConsumerState<OperatorInve
           Container(
             padding: const EdgeInsets.all(AppSpacing.sm),
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.8),
+              color: Colors.white.withValues(alpha: 0.8),
               borderRadius: BorderRadius.circular(10),
             ),
             child: Text(
@@ -658,7 +659,6 @@ class _OperatorInvestigationStudioScreenState extends ConsumerState<OperatorInve
                 onPressed: () {
                   setState(() {
                     _composerController.text = _draftText;
-                    _isDraftApplied = true;
                   });
                   _showFeedbackToast('AI Draft applied to message composer', Icons.auto_awesome, const Color(0xFF831ADA));
                 },
@@ -690,13 +690,13 @@ class _OperatorInvestigationStudioScreenState extends ConsumerState<OperatorInve
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
-            mainAxisAlignment: MainAxisAlignment.between,
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Row(
+              const Row(
                 children: [
-                  const Icon(Icons.analytics_outlined, size: 16, color: Color(0xFF006194)),
-                  const SizedBox(width: 6),
-                  const Text('Ingress Gateway Health', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+                  Icon(Icons.analytics_outlined, size: 16, color: Color(0xFF006194)),
+                  SizedBox(width: 6),
+                  Text('Ingress Gateway Health', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
                 ],
               ),
               Container(
@@ -719,7 +719,7 @@ class _OperatorInvestigationStudioScreenState extends ConsumerState<OperatorInve
             width: double.infinity,
             decoration: BoxDecoration(
               gradient: LinearGradient(
-                colors: [const Color(0xFF4648D4).withOpacity(0.08), Colors.transparent],
+                colors: [const Color(0xFF4648D4).withValues(alpha: 0.08), Colors.transparent],
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
               ),
@@ -730,12 +730,12 @@ class _OperatorInvestigationStudioScreenState extends ConsumerState<OperatorInve
             ),
           ),
           const SizedBox(height: 4),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.between,
+          const Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text('10:00 (Canary)', style: TextStyle(color: AppColors.textMuted, fontSize: 9, fontFamily: 'JetBrains Mono')),
-              const Text('10:15 (Degraded)', style: TextStyle(color: AppColors.textMuted, fontSize: 9, fontFamily: 'JetBrains Mono')),
-              const Text('10:28 (Now)', style: TextStyle(color: Color(0xFFE11D48), fontSize: 9, fontWeight: FontWeight.bold, fontFamily: 'JetBrains Mono')),
+              Text('10:00 (Canary)', style: TextStyle(color: AppColors.textMuted, fontSize: 9, fontFamily: 'JetBrains Mono')),
+              Text('10:15 (Degraded)', style: TextStyle(color: AppColors.textMuted, fontSize: 9, fontFamily: 'JetBrains Mono')),
+              Text('10:28 (Now)', style: TextStyle(color: Color(0xFFE11D48), fontSize: 9, fontWeight: FontWeight.bold, fontFamily: 'JetBrains Mono')),
             ],
           ),
         ],
@@ -762,7 +762,7 @@ class _OperatorInvestigationStudioScreenState extends ConsumerState<OperatorInve
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
-            mainAxisAlignment: MainAxisAlignment.between,
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Container(
                 padding: const EdgeInsets.all(2),
@@ -805,8 +805,8 @@ class _OperatorInvestigationStudioScreenState extends ConsumerState<OperatorInve
                               ? const [BoxShadow(color: Color(0x0A000000), blurRadius: 2)]
                               : null,
                         ),
-                        child: Row(
-                          children: const [
+                        child: const Row(
+                          children: [
                             Text('Internal Note', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold)),
                             SizedBox(width: 3),
                             Icon(Icons.lock, size: 10, color: AppColors.textMuted),
@@ -855,7 +855,7 @@ class _OperatorInvestigationStudioScreenState extends ConsumerState<OperatorInve
           ),
           const SizedBox(height: AppSpacing.xs),
           Row(
-            mainAxisAlignment: MainAxisAlignment.between,
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Row(
                 children: [
@@ -885,19 +885,12 @@ class _OperatorInvestigationStudioScreenState extends ConsumerState<OperatorInve
                 ],
               ),
               ElevatedButton.icon(
-                onPressed: () {
-                  if (_composerController.text.trim().isNotEmpty) {
-                    _showFeedbackToast('Update dispatched successfully', Icons.send, const Color(0xFF0D9488));
-                    setState(() {
-                      _composerController.clear();
-                    });
-                  }
-                },
-                icon: const Icon(Icons.send, size: 14, color: Colors.white),
-                label: const Text('Send Update', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.white)),
+                onPressed: _sendComposerMessage,
+                icon: const Icon(Icons.send, size: 12, color: Colors.white),
+                label: const Text('Send', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.white)),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF4648D4),
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
                   elevation: 0,
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                 ),
@@ -947,44 +940,7 @@ class _OperatorInvestigationStudioScreenState extends ConsumerState<OperatorInve
     );
   }
 
-  Widget _buildBottomNav(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.95),
-        border: const Border(top: BorderSide(color: Color(0xFFE2E8F0))),
-      ),
-      child: BottomNavigationBar(
-        currentIndex: _currentNavIndex,
-        onTap: (index) {
-          setState(() {
-            _currentNavIndex = index;
-          });
-          if (index == 0) {
-            context.go('/dashboard/operator/triage');
-          } else if (index == 2) {
-            context.push('/cases/${widget.caseId}/collaboration');
-          } else if (index == 4) {
-            context.go('/dashboard/requester');
-          }
-        },
-        type: BottomNavigationBarType.fixed,
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        selectedItemColor: const Color(0xFF4648D4),
-        unselectedItemColor: AppColors.textMuted,
-        selectedFontSize: 10,
-        unselectedFontSize: 10,
-        selectedLabelStyle: const TextStyle(fontWeight: FontWeight.bold),
-        items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.inbox_outlined), activeIcon: Icon(Icons.inbox), label: 'Triage'),
-          BottomNavigationBarItem(icon: Icon(Icons.dataset_outlined), activeIcon: Icon(Icons.dataset), label: 'Studio'),
-          BottomNavigationBarItem(icon: Icon(Icons.radar_outlined), activeIcon: Icon(Icons.radar), label: 'Radar'),
-          BottomNavigationBarItem(icon: Icon(Icons.group_outlined), activeIcon: Icon(Icons.group), label: 'Lead'),
-          BottomNavigationBarItem(icon: Icon(Icons.admin_panel_settings_outlined), activeIcon: Icon(Icons.admin_panel_settings), label: 'Portal'),
-        ],
-      ),
-    );
-  }
+
 }
 
 /// Custom Sparkline Painter for telemetry latency spikes

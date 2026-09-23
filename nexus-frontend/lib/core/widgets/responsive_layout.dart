@@ -3,15 +3,21 @@ import 'package:flutter/material.dart';
 enum DeviceScreenType { mobile, tablet, desktop }
 
 class ResponsiveLayout extends StatelessWidget {
-  final Widget Function(BuildContext context, BoxConstraints constraints) mobile;
+  final Widget Function(BuildContext context, BoxConstraints constraints)? mobile;
   final Widget Function(BuildContext context, BoxConstraints constraints)? tablet;
-  final Widget Function(BuildContext context, BoxConstraints constraints) desktop;
+  final Widget Function(BuildContext context, BoxConstraints constraints)? desktop;
+  final Widget? mobileBody;
+  final Widget? tabletBody;
+  final Widget? desktopBody;
 
   const ResponsiveLayout({
     super.key,
-    required this.mobile,
+    this.mobile,
     this.tablet,
-    required this.desktop,
+    this.desktop,
+    this.mobileBody,
+    this.tabletBody,
+    this.desktopBody,
   });
 
   static DeviceScreenType getDeviceType(BuildContext context) {
@@ -36,11 +42,17 @@ class ResponsiveLayout extends StatelessWidget {
     return LayoutBuilder(
       builder: (context, constraints) {
         if (constraints.maxWidth >= 1200) {
-          return desktop(context, constraints);
+          if (desktop != null) return desktop!(context, constraints);
+          if (desktopBody != null) return desktopBody!;
         } else if (constraints.maxWidth >= 600) {
-          return (tablet ?? desktop)(context, constraints);
+          if (tablet != null) return tablet!(context, constraints);
+          if (tabletBody != null) return tabletBody!;
+          if (desktop != null) return desktop!(context, constraints);
+          if (desktopBody != null) return desktopBody!;
         }
-        return mobile(context, constraints);
+        if (mobile != null) return mobile!(context, constraints);
+        if (mobileBody != null) return mobileBody!;
+        return const SizedBox.shrink();
       },
     );
   }

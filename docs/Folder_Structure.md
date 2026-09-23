@@ -1,4 +1,4 @@
-﻿# Nexus — Folder Structure
+# Nexus — Folder Structure
 ### *AI-Powered Case Management Platform*
 
 > **Source:** Extracted from `Nexus_SRS.md` §5 (SRS v1.1)
@@ -43,11 +43,11 @@ nexus-backend/
 │   │   │   │   └── dto/
 │   │   │   │
 │   │   │   ├── user/
-│   │   │   │   ├── controller/
-│   │   │   │   ├── service/
-│   │   │   │   ├── repository/
-│   │   │   │   ├── entity/ (User, Role, UserRole)
-│   │   │   │   └── dto/
+│   │   │   │   ├── controller/AdminUserController.java
+│   │   │   │   ├── service/UserService.java
+│   │   │   │   ├── repository/UserRepository.java, RoleRepository.java
+│   │   │   │   ├── entity/ (User, Role, UserRole, RoleType, UserStatus)
+│   │   │   │   └── dto/ (UserDto, UpdateUserRoleRequest)
 │   │   │   │
 │   │   │   ├── casemanagement/
 │   │   │   │   ├── controller/CaseController.java
@@ -65,6 +65,7 @@ nexus-backend/
 │   │   │   │   └── dto/
 │   │   │   │
 │   │   │   ├── ai/
+│   │   │   │   ├── config/AiConfig.java
 │   │   │   │   ├── controller/AiController.java
 │   │   │   │   ├── service/
 │   │   │   │   │   ├── AiAnalysisService.java
@@ -73,7 +74,7 @@ nexus-backend/
 │   │   │   │   │   ├── AiAssignmentService.java
 │   │   │   │   │   ├── AiCommunicationService.java
 │   │   │   │   │   └── AiCopilotService.java
-│   │   │   │   ├── provider/ (AIProviderPort + implementations via Spring AI)
+│   │   │   │   ├── provider/ (AIProviderPort + MockAiProvider, SpringAiChatProvider)
 │   │   │   │   ├── entity/ (AiAnalysis, AiSuggestion, AiSummary)
 │   │   │   │   └── dto/
 │   │   │   │
@@ -138,9 +139,10 @@ nexus-backend/
 │   │           ├── V2__create_case_tables.sql
 │   │           ├── V3__create_collaboration_tables.sql
 │   │           ├── V4__create_ai_tables.sql
-│   │           ├── V5__create_sla_escalation_tables.sql
-│   │           ├── V6__create_notification_resolution_tables.sql
-│   │           └── V7__create_audit_problem_tables.sql
+│   │           ├── V5__create_case_relations_tables.sql
+│   │           ├── V6__create_sla_escalation_notifications_tables.sql
+│   │           ├── V7__create_resolution_problems_tables.sql
+│   │           └── V8__create_audit_logs_and_search_indexes.sql
 │   │
 │   └── test/
 │       └── java/com/nexus/

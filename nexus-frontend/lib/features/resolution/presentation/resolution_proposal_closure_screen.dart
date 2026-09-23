@@ -5,9 +5,13 @@ import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_typography.dart';
-import '../../../core/widgets/nexus_button.dart';
+import '../../../core/widgets/app_shell.dart';
 import '../../../core/widgets/responsive_layout.dart';
-import '../../../core/widgets/status_badge.dart';
+import '../../../core/widgets/state_view_helpers.dart';
+import '../../case/data/case_repository.dart';
+import '../../case/domain/case_model.dart';
+import '../../resolution/data/resolution_api.dart';
+import '../../resolution/domain/resolution_model.dart';
 
 /// SCR-10: Resolution Proposal & Closure Modal Screen
 /// Dual-signoff resolution workspace with AI Root Cause Digest, remediation classification pills,
@@ -28,11 +32,59 @@ class _ResolutionProposalClosureScreenState extends ConsumerState<ResolutionProp
   final TextEditingController _noteController = TextEditingController(
     text: "Ingress Envoy connection limits have been re-calibrated. All affected regional pods have returned to nominal latency (<12ms).",
   );
+  final ResolutionApi _resolutionApi = ResolutionApi();
+
+  CaseModel? _caseDetail;
+  ResolutionModel? _existingProposal;
   bool _includeRcaSummary = true;
   bool _publishToKedb = true;
   String _selectedRemediation = 'Permanent Patch';
+  bool _isLoading = false;
   bool _isDispatching = false;
-  int _currentNavIndex = 1;
+  String? _errorMessage;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadResolutionContext();
+  }
+
+  Future<void> _loadResolutionContext() async {
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+
+    final caseId = widget.caseId;
+    final results = await Future.wait([
+      CaseRepository().getCaseDetail(caseId),
+      _resolutionApi.getProposal(caseId),
+    ]);
+
+    final caseRes = results[0] as dynamic;
+    final propRes = results[1] as dynamic;
+
+    if (mounted) {
+      if (caseRes.success && caseRes.data != null) {
+        final caseData = caseRes.data as CaseModel;
+        final proposal = propRes.success && propRes.data != null ? (propRes.data as ResolutionModel) : null;
+
+        setState(() {
+          _caseDetail = caseData;
+          _existingProposal = proposal;
+          if (proposal != null && proposal.summary.isNotEmpty) {
+            _noteController.text = proposal.summary;
+          }
+          _isLoading = false;
+        });
+      } else {
+        setState(() {
+          _errorMessage = caseRes.error ?? 'Failed to load resolution context';
+          _isLoading = false;
+        });
+      }
+    }
+  }
 
   @override
   void dispose() {
@@ -62,107 +114,49 @@ class _ResolutionProposalClosureScreenState extends ConsumerState<ResolutionProp
     );
   }
 
-  void _triggerHandshake() {
+  Future<void> _triggerHandshake() async {
     setState(() {
       _isDispatching = true;
     });
-    Future.delayed(const Duration(milliseconds: 700), () {
-      if (mounted) {
-        setState(() {
-          _isDispatching = false;
-        });
-        _showFeedbackToast('Resolution proposal dispatched to requester', Icons.verified, const Color(0xFF0D9488));
+
+    final res = await _resolutionApi.proposeResolution(
+      caseId: widget.caseId,
+      summary: _noteController.text.trim(),
+      rootCause: 'Connection Pool Exhaustion during burst traffic',
+      resolutionAction: _selectedRemediation,
+      preventiveAction: _publishToKedb ? 'Publish to KEDB for autonomous matching' : null,
+    );
+
+    if (mounted) {
+      setState(() {
+        _isDispatching = false;
+      });
+
+      if (res.success) {
+        _showFeedbackToast('Resolution proposal dispatched to requester for sign-off', Icons.verified, const Color(0xFF0D9488));
         context.push('/cases/${widget.caseId}/track');
+      } else {
+        _showFeedbackToast(res.error ?? 'Failed to submit resolution', Icons.error_outline, const Color(0xFFE11D48));
       }
-    });
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFFAF8FF),
-      appBar: _buildAppBar(context),
-      body: SafeArea(
-        child: ResponsiveLayout(
-          mobileBody: _buildMobileBody(context),
-          desktopBody: _buildDesktopBody(context),
-        ),
-      ),
-      bottomNavigationBar: _buildBottomNav(context),
-    );
-  }
-
-  PreferredSizeWidget _buildAppBar(BuildContext context) {
-    return AppBar(
-      backgroundColor: Colors.white.withOpacity(0.9),
-      elevation: 0,
-      scrolledUnderElevation: 1,
-      leading: IconButton(
-        icon: const Icon(Icons.arrow_back, color: AppColors.textPrimary),
-        onPressed: () {
-          if (context.canPop()) {
-            context.pop();
-          } else {
-            context.go('/cases/${widget.caseId}/investigation');
-          }
-        },
-      ),
-      titleSpacing: 0,
-      title: Row(
-        children: [
-          Container(
-            width: 32,
-            height: 32,
-            decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                colors: [Color(0xFF0D9488), Color(0xFF4648D4)],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: const Center(
-              child: Icon(Icons.verified, color: Colors.white, size: 18),
-            ),
-          ),
-          const SizedBox(width: AppSpacing.xs),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Propose Resolution',
-                style: AppTypography.headlineSmall(context).copyWith(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 15,
+    return AppShell(
+      currentPath: '/dashboard/operator',
+      title: 'Propose Resolution',
+      child: _isLoading
+          ? const NexusLoadingView(message: 'Loading resolution verification gates...')
+          : _errorMessage != null
+              ? NexusErrorView(
+                  message: _errorMessage!,
+                  onRetry: _loadResolutionContext,
+                )
+              : ResponsiveLayout(
+                  mobileBody: _buildMobileBody(context),
+                  desktopBody: _buildDesktopBody(context),
                 ),
-              ),
-              Text(
-                'CLOSURE & HANDSHAKE',
-                style: AppTypography.labelSmall(context).copyWith(
-                  color: AppColors.textMuted,
-                  letterSpacing: 0.8,
-                  fontSize: 8,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-      actions: [
-        Container(
-          margin: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-          decoration: BoxDecoration(
-            color: const Color(0xFFCCFBF1),
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: const Text(
-            'Level 3 Fix',
-            style: TextStyle(color: Color(0xFF0D9488), fontSize: 9, fontWeight: FontWeight.bold),
-          ),
-        ),
-      ],
     );
   }
 
@@ -242,6 +236,9 @@ class _ResolutionProposalClosureScreenState extends ConsumerState<ResolutionProp
   }
 
   Widget _buildMetaHeaderCard() {
+    final caseNum = _caseDetail?.id ?? widget.caseId;
+    final title = _caseDetail?.title ?? 'Authentication Gateway Timeout during SSO';
+
     return Container(
       padding: const EdgeInsets.all(AppSpacing.md),
       decoration: BoxDecoration(
@@ -260,17 +257,20 @@ class _ResolutionProposalClosureScreenState extends ConsumerState<ResolutionProp
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
-            mainAxisAlignment: MainAxisAlignment.between,
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                 decoration: BoxDecoration(color: const Color(0xFFF2F3FF), borderRadius: BorderRadius.circular(6)),
-                child: Text(widget.caseId, style: AppTypography.codeSmall(context).copyWith(fontWeight: FontWeight.bold)),
+                child: Text(caseNum, style: AppTypography.codeSmall(context).copyWith(fontWeight: FontWeight.bold)),
               ),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                 decoration: BoxDecoration(color: const Color(0xFFEEF2FF), borderRadius: BorderRadius.circular(10)),
-                child: const Text('Ready for Handshake', style: TextStyle(color: Color(0xFF6366F1), fontSize: 9, fontWeight: FontWeight.bold)),
+                child: Text(
+                  _existingProposal != null ? 'Status: ${_existingProposal!.status}' : 'Ready for Handshake',
+                  style: const TextStyle(color: Color(0xFF6366F1), fontSize: 9, fontWeight: FontWeight.bold),
+                ),
               ),
             ],
           ),
@@ -280,9 +280,9 @@ class _ResolutionProposalClosureScreenState extends ConsumerState<ResolutionProp
             style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
           ),
           const SizedBox(height: 2),
-          const Text(
-            '“Authentication Gateway Timeout during SSO federation” — verified system stabilization.',
-            style: TextStyle(color: AppColors.textSecondary, fontSize: 12),
+          Text(
+            '“$title” — verified system stabilization.',
+            style: const TextStyle(color: AppColors.textSecondary, fontSize: 12),
           ),
         ],
       ),
@@ -295,22 +295,24 @@ class _ResolutionProposalClosureScreenState extends ConsumerState<ResolutionProp
       decoration: BoxDecoration(
         color: const Color(0xFFFAF5FF),
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0xFFC084FC).withOpacity(0.3)),
+        border: Border.all(color: const Color(0xFFC084FC).withValues(alpha: 0.3)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.between,
+          const Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Row(
-                children: const [
+                children: [
                   Icon(Icons.auto_awesome, size: 16, color: Color(0xFF831ADA)),
                   SizedBox(width: 4),
-                  Text('NEXUS COPILOT ROOT-CAUSE', style: TextStyle(color: Color(0xFF831ADA), fontWeight: FontWeight.bold, fontSize: 10, letterSpacing: 0.8)),
+                  Text('NEXUS COPILOT ROOT-CAUSE',
+                      style: TextStyle(color: Color(0xFF831ADA), fontWeight: FontWeight.bold, fontSize: 10, letterSpacing: 0.8)),
                 ],
               ),
-              const Text('Model v4.2', style: TextStyle(color: AppColors.textMuted, fontSize: 9, fontFamily: 'JetBrains Mono')),
+              Text('Model v4.2',
+                  style: TextStyle(color: AppColors.textMuted, fontSize: 9, fontFamily: 'JetBrains Mono')),
             ],
           ),
           const SizedBox(height: AppSpacing.xs),
@@ -338,7 +340,8 @@ class _ResolutionProposalClosureScreenState extends ConsumerState<ResolutionProp
                   materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
                 ),
                 const Expanded(
-                  child: Text('Include AI automated RCA summary in customer closure notice', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w500)),
+                  child: Text('Include AI automated RCA summary in customer closure notice',
+                      style: TextStyle(fontSize: 11, fontWeight: FontWeight.w500)),
                 ),
               ],
             ),
@@ -352,7 +355,8 @@ class _ResolutionProposalClosureScreenState extends ConsumerState<ResolutionProp
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text('ROOT CAUSE CATEGORY', style: TextStyle(color: AppColors.textSecondary, fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 0.8)),
+        const Text('ROOT CAUSE CATEGORY',
+            style: TextStyle(color: AppColors.textSecondary, fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 0.8)),
         const SizedBox(height: 4),
         Container(
           padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: 10),
@@ -362,15 +366,17 @@ class _ResolutionProposalClosureScreenState extends ConsumerState<ResolutionProp
             border: Border.all(color: const Color(0xFFE2E8F0)),
           ),
           child: Row(
-            mainAxisAlignment: MainAxisAlignment.between,
-            children: const [
-              Text('Infrastructure > Connection Pool Exhaustion', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
-              Icon(Icons.expand_more, size: 18, color: AppColors.textSecondary),
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text('${_caseDetail?.categoryName ?? "Infrastructure"} > Connection Pool Exhaustion',
+                  style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+              const Icon(Icons.expand_more, size: 18, color: AppColors.textSecondary),
             ],
           ),
         ),
         const SizedBox(height: AppSpacing.sm),
-        const Text('REMEDIATION CLASSIFICATION', style: TextStyle(color: AppColors.textSecondary, fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 0.8)),
+        const Text('REMEDIATION CLASSIFICATION',
+            style: TextStyle(color: AppColors.textSecondary, fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 0.8)),
         const SizedBox(height: 4),
         Container(
           padding: const EdgeInsets.all(3),
@@ -423,10 +429,11 @@ class _ResolutionProposalClosureScreenState extends ConsumerState<ResolutionProp
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.between,
-          children: const [
-            Text('CUSTOMER-FACING NOTE', style: TextStyle(color: AppColors.textSecondary, fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 0.8)),
+        const Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text('CUSTOMER-FACING NOTE',
+                style: TextStyle(color: AppColors.textSecondary, fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 0.8)),
             Text('Dual Audited', style: TextStyle(color: AppColors.textMuted, fontSize: 10)),
           ],
         ),
@@ -476,12 +483,13 @@ class _ResolutionProposalClosureScreenState extends ConsumerState<ResolutionProp
               },
               activeColor: const Color(0xFF4648D4),
             ),
-            Expanded(
+            const Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
-                children: const [
+                children: [
                   Text('Publish to KEDB (Known Error Database)', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
-                  Text('Enables autonomous triage matching for incident recurrence', style: TextStyle(color: AppColors.textSecondary, fontSize: 10)),
+                  Text('Enables autonomous triage matching for incident recurrence',
+                      style: TextStyle(color: AppColors.textSecondary, fontSize: 10)),
                 ],
               ),
             ),
@@ -495,14 +503,15 @@ class _ResolutionProposalClosureScreenState extends ConsumerState<ResolutionProp
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text('STABILIZATION GATES', style: TextStyle(color: AppColors.textSecondary, fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 0.8)),
+        const Text('STABILIZATION GATES',
+            style: TextStyle(color: AppColors.textSecondary, fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 0.8)),
         const SizedBox(height: 6),
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
           decoration: BoxDecoration(color: const Color(0xFFF2F3FF), borderRadius: BorderRadius.circular(8)),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.between,
-            children: const [
+          child: const Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
               Row(
                 children: [
                   Icon(Icons.check_circle, size: 16, color: Color(0xFF0D9488)),
@@ -510,7 +519,8 @@ class _ResolutionProposalClosureScreenState extends ConsumerState<ResolutionProp
                   Text('Synthetic probe telemetry passing', style: TextStyle(fontSize: 11)),
                 ],
               ),
-              Text('100/100', style: TextStyle(color: Color(0xFF0D9488), fontSize: 10, fontWeight: FontWeight.bold, fontFamily: 'JetBrains Mono')),
+              Text('100/100',
+                  style: TextStyle(color: Color(0xFF0D9488), fontSize: 10, fontWeight: FontWeight.bold, fontFamily: 'JetBrains Mono')),
             ],
           ),
         ),
@@ -519,16 +529,19 @@ class _ResolutionProposalClosureScreenState extends ConsumerState<ResolutionProp
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
           decoration: BoxDecoration(color: const Color(0xFFF2F3FF), borderRadius: BorderRadius.circular(8)),
           child: Row(
-            mainAxisAlignment: MainAxisAlignment.between,
-            children: const [
-              Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Row(
                 children: [
                   Icon(Icons.pending, size: 16, color: Color(0xFF6366F1)),
                   SizedBox(width: 6),
                   Text('Requester dual sign-off requested', style: TextStyle(fontSize: 11)),
                 ],
               ),
-              Text('PENDING', style: TextStyle(color: Color(0xFF6366F1), fontSize: 9, fontWeight: FontWeight.bold, fontFamily: 'JetBrains Mono')),
+              Text(
+                _existingProposal?.status ?? 'PENDING',
+                style: const TextStyle(color: Color(0xFF6366F1), fontSize: 9, fontWeight: FontWeight.bold, fontFamily: 'JetBrains Mono'),
+              ),
             ],
           ),
         ),
@@ -573,47 +586,6 @@ class _ResolutionProposalClosureScreenState extends ConsumerState<ResolutionProp
           ],
         ),
       ],
-    );
-  }
-
-  Widget _buildBottomNav(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.95),
-        border: const Border(top: BorderSide(color: Color(0xFFE2E8F0))),
-      ),
-      child: BottomNavigationBar(
-        currentIndex: _currentNavIndex,
-        onTap: (index) {
-          setState(() {
-            _currentNavIndex = index;
-          });
-          if (index == 0) {
-            context.go('/dashboard/operator/triage');
-          } else if (index == 1) {
-            context.push('/cases/${widget.caseId}/investigation');
-          } else if (index == 2) {
-            context.push('/cases/${widget.caseId}/collaboration');
-          } else if (index == 4) {
-            context.go('/dashboard/requester');
-          }
-        },
-        type: BottomNavigationBarType.fixed,
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        selectedItemColor: const Color(0xFF4648D4),
-        unselectedItemColor: AppColors.textMuted,
-        selectedFontSize: 10,
-        unselectedFontSize: 10,
-        selectedLabelStyle: const TextStyle(fontWeight: FontWeight.bold),
-        items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.inbox_outlined), activeIcon: Icon(Icons.inbox), label: 'Triage'),
-          BottomNavigationBarItem(icon: Icon(Icons.dataset_outlined), activeIcon: Icon(Icons.dataset), label: 'Studio'),
-          BottomNavigationBarItem(icon: Icon(Icons.radar_outlined), activeIcon: Icon(Icons.radar), label: 'Radar'),
-          BottomNavigationBarItem(icon: Icon(Icons.group_outlined), activeIcon: Icon(Icons.group), label: 'Lead'),
-          BottomNavigationBarItem(icon: Icon(Icons.admin_panel_settings_outlined), activeIcon: Icon(Icons.admin_panel_settings), label: 'Portal'),
-        ],
-      ),
     );
   }
 }

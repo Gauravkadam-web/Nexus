@@ -3,26 +3,34 @@ import '../theme/app_colors.dart';
 import '../theme/app_spacing.dart';
 
 enum NexusButtonVariant { primary, secondary, ghost, danger }
+typedef ButtonVariant = NexusButtonVariant;
+enum ButtonSize { small, medium, large }
 
 class NexusButton extends StatelessWidget {
-  final String text;
+  final String? text;
+  final String? label;
   final VoidCallback? onPressed;
   final IconData? icon;
   final NexusButtonVariant variant;
+  final ButtonSize? size;
   final bool isLoading;
   final double? width;
   final double height;
 
   const NexusButton({
     super.key,
-    required this.text,
+    this.text,
+    this.label,
     this.onPressed,
     this.icon,
     this.variant = NexusButtonVariant.primary,
+    this.size,
     this.isLoading = false,
     this.width,
     this.height = 44.0,
   });
+
+  String get effectiveText => text ?? label ?? '';
 
   @override
   Widget build(BuildContext context) {
@@ -67,7 +75,7 @@ class NexusButton extends StatelessWidget {
                 const SizedBox(width: AppSpacing.sm),
               ],
               Text(
-                text,
+                effectiveText,
                 style: TextStyle(
                   color: fg,
                   fontWeight: FontWeight.w600,

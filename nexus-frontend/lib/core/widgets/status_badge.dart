@@ -2,35 +2,30 @@ import 'package:flutter/material.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_spacing.dart';
 
-enum CaseStatusType {
-  reported,
-  understood,
-  assigned,
-  investigating,
-  waitingForInfo,
-  resolutionProposed,
-  closed,
-  breached,
-}
-
 class StatusBadge extends StatelessWidget {
-  final String status;
+  final dynamic status;
+  final dynamic severity;
+  final dynamic priority;
   final bool showDot;
 
   const StatusBadge({
     super.key,
-    required this.status,
+    this.status,
+    this.severity,
+    this.priority,
     this.showDot = true,
   });
 
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final normalized = status.toUpperCase().replaceAll(' ', '_');
+    final rawValue = (status ?? severity ?? priority ?? 'REPORTED').toString();
+    final statusStr = rawValue.contains('.') ? rawValue.split('.').last : rawValue;
+    final normalized = statusStr.toUpperCase().replaceAll(' ', '_');
 
     Color fg;
     Color bg;
-    String label = status;
+    String label = statusStr;
 
     switch (normalized) {
       case 'REPORTED':

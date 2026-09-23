@@ -1,4 +1,5 @@
-import '../../auth/domain/user_model.dart';
+
+// ignore_for_file: constant_identifier_names
 
 enum CaseSeverity { LOW, MEDIUM, HIGH, CRITICAL }
 
@@ -88,6 +89,15 @@ class CaseModel {
     );
   }
 
+  String get caseNumber => id.length > 8 ? 'NEX-${id.substring(0, 8).toUpperCase()}' : (id.isNotEmpty ? 'NEX-$id' : 'NEX-0000');
+  String get assignedToName => assignedOperatorName ?? 'Unassigned';
+  String get slaRiskLevel {
+    final s = severity.toUpperCase();
+    if (s == 'CRITICAL') return 'CRITICAL';
+    if (s == 'HIGH') return 'AT RISK';
+    return 'HEALTHY';
+  }
+
   Map<String, dynamic> toJson() {
     return {
       'id': id,
@@ -101,6 +111,46 @@ class CaseModel {
       'createdAt': createdAt.toIso8601String(),
       'updatedAt': updatedAt.toIso8601String(),
     };
+  }
+}
+
+class AiAnalysisModel {
+  final String? id;
+  final String? caseId;
+  final String? executiveSummary;
+  final double? confidenceScore;
+  final List<String> suggestedSteps;
+  final String? rootCauseHypothesis;
+  final String? suggestedPriority;
+  final String? suggestedCategory;
+  final List<String> riskFactors;
+
+  const AiAnalysisModel({
+    this.id,
+    this.caseId,
+    this.executiveSummary,
+    this.confidenceScore,
+    this.suggestedSteps = const [],
+    this.rootCauseHypothesis,
+    this.suggestedPriority,
+    this.suggestedCategory,
+    this.riskFactors = const [],
+  });
+
+  factory AiAnalysisModel.fromJson(Map<String, dynamic> json) {
+    return AiAnalysisModel(
+      id: json['id'] as String?,
+      caseId: json['caseId'] as String?,
+      executiveSummary: json['executiveSummary'] as String? ?? json['summary'] as String? ?? json['aiDiagnosis'] as String?,
+      confidenceScore: (json['confidenceScore'] as num?)?.toDouble() ?? (json['confidence'] as num?)?.toDouble() ?? 0.88,
+      suggestedSteps: (json['suggestedSteps'] as List<dynamic>?)?.map((e) => e.toString()).toList() ??
+          (json['steps'] as List<dynamic>?)?.map((e) => e.toString()).toList() ??
+          const [],
+      rootCauseHypothesis: json['rootCauseHypothesis'] as String? ?? json['hypothesis'] as String?,
+      suggestedPriority: json['suggestedPriority'] as String?,
+      suggestedCategory: json['suggestedCategory'] as String?,
+      riskFactors: (json['riskFactors'] as List<dynamic>?)?.map((e) => e.toString()).toList() ?? const [],
+    );
   }
 }
 

@@ -1,13 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_typography.dart';
+import '../../../core/widgets/app_shell.dart';
 import '../../../core/widgets/nexus_button.dart';
 import '../../../core/widgets/responsive_layout.dart';
-import '../../../core/widgets/status_badge.dart';
+import '../../../core/widgets/state_view_helpers.dart';
+import '../data/notification_api.dart';
 
 /// Notification model representing cross-channel alerts
 class AppNotificationItem {
@@ -72,88 +73,78 @@ class GlobalNotificationCenterScreen extends ConsumerStatefulWidget {
 class _GlobalNotificationCenterScreenState extends ConsumerState<GlobalNotificationCenterScreen> {
   String _selectedCategory = 'ALL';
   bool _showUnreadOnly = false;
-  bool _soundEnabled = true;
-  int _currentNavIndex = 4; // Notifications active
+  bool _isLoading = false;
+  String? _errorMessage;
 
   final Map<String, TextEditingController> _replyControllers = {};
 
-  late List<AppNotificationItem> _notifications;
+  List<AppNotificationItem> _notifications = [];
 
   @override
   void initState() {
     super.initState();
-    _notifications = [
-      AppNotificationItem(
-        id: 'NOTIF-901',
-        title: 'SLA Breach Warning (Tier-1 Critical)',
-        message: 'Case #NEX-8902 resolution deadline expires in 14 minutes. Immediate failover escalation recommended.',
-        category: 'sla',
-        timestamp: '2 min ago',
-        priority: 'critical',
-        isRead: false,
-        caseId: 'NEX-8902',
-        caseTitle: 'Kafka Cluster Degradation - EU Central 1',
-      ),
-      AppNotificationItem(
-        id: 'NOTIF-902',
-        title: 'AI Playbook Recommendation Ready',
-        message: 'Autonomous Copilot identified 94% pattern match with Post-Mortem Incident #PM-401.',
-        category: 'ai',
-        timestamp: '8 min ago',
-        priority: 'high',
-        isRead: false,
-        caseId: 'NEX-8905',
-        caseTitle: 'Stripe Webhook Delivery Timeout Spike',
-        aiPlaybookName: 'Auto-Retry Backoff & Circuit Breaker Reset',
-      ),
-      AppNotificationItem(
-        id: 'NOTIF-903',
-        title: 'Sarah Chen mentioned you in Investigation',
-        message: '@gaurav.kadam Can you verify if the TLS certificate rotated cleanly across the secondary egress proxy?',
-        category: 'mention',
-        timestamp: '24 min ago',
-        priority: 'medium',
-        isRead: false,
-        caseId: 'NEX-8900',
-        caseTitle: 'SSL Handshake Failure on Auth Gateway',
-        senderName: 'Sarah Chen (Lead SecOps)',
-        senderAvatar: 'SC',
-      ),
-      AppNotificationItem(
-        id: 'NOTIF-904',
-        title: 'Automated Root Cause Diagnosis Completed',
-        message: 'Copilot synthesized 1,420 microservice log lines into an executive timeline.',
-        category: 'ai',
-        timestamp: '1 hour ago',
-        priority: 'medium',
-        isRead: true,
-        caseId: 'NEX-8898',
-        caseTitle: 'PostgreSQL Connection Pool Saturation',
-        aiPlaybookName: 'DB Connection Eviction & Query Kill',
-      ),
-      AppNotificationItem(
-        id: 'NOTIF-905',
-        title: 'Marcus Vance re-assigned Case to Core Infra',
-        message: 'Transferred ownership of #NEX-8891 from Tier-2 Support to Infrastructure Engineering.',
-        category: 'system',
-        timestamp: '3 hours ago',
-        priority: 'low',
-        isRead: true,
-        caseId: 'NEX-8891',
-        caseTitle: 'Redis Sentinel Quorum Desynchronization',
-        senderName: 'Marcus Vance (Ops Manager)',
-        senderAvatar: 'MV',
-      ),
-      AppNotificationItem(
-        id: 'NOTIF-906',
-        title: 'Security Compliance Audit Auto-Exported',
-        message: 'Weekly ISO-27001 audit ledger snapshot cryptographically sealed and archived to S3 Coldline.',
-        category: 'system',
-        timestamp: '5 hours ago',
-        priority: 'low',
-        isRead: true,
-      ),
-    ];
+    _loadNotifications();
+  }
+
+  Future<void> _loadNotifications() async {
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+
+    final res = await NotificationApi().getMyNotifications();
+    if (mounted) {
+      if (res.success && res.data != null) {
+        final items = res.data!.map((n) {
+          String category = 'system';
+          String priority = 'low';
+          final typeUpper = n.type.toUpperCase();
+
+          if (typeUpper.contains('SLA') || typeUpper.contains('BREACH') || typeUpper.contains('ESCALAT')) {
+            category = 'sla';
+            priority = 'critical';
+          } else if (typeUpper.contains('AI') || typeUpper.contains('SUGGESTION') || typeUpper.contains('SUMMARY')) {
+            category = 'ai';
+            priority = 'high';
+          } else if (typeUpper.contains('MENTION') || typeUpper.contains('MESSAGE')) {
+            category = 'mention';
+            priority = 'medium';
+          }
+
+          final diff = DateTime.now().difference(n.createdAt);
+          String timeStr = '${diff.inMinutes}m ago';
+          if (diff.inMinutes < 1) {
+            timeStr = 'Just now';
+          } else if (diff.inHours < 24 && diff.inMinutes >= 60) {
+            timeStr = '${diff.inHours}h ago';
+          } else if (diff.inDays >= 1) {
+            timeStr = '${diff.inDays}d ago';
+          }
+
+          return AppNotificationItem(
+            id: n.id,
+            title: n.title,
+            message: n.message,
+            category: category,
+            timestamp: timeStr,
+            priority: priority,
+            isRead: n.isRead,
+            caseId: n.caseId,
+            caseTitle: n.caseId != null ? 'Case #${n.caseId}' : null,
+          );
+        }).toList();
+
+        setState(() {
+          _notifications = items;
+          _isLoading = false;
+        });
+      } else {
+        setState(() {
+          _errorMessage = res.error ?? 'Failed to load notifications';
+          _isLoading = false;
+        });
+      }
+    }
   }
 
   @override
@@ -186,22 +177,28 @@ class _GlobalNotificationCenterScreenState extends ConsumerState<GlobalNotificat
     );
   }
 
-  void _markAllAsRead() {
+  Future<void> _markAllAsRead() async {
     setState(() {
       _notifications = _notifications.map((n) => n.copyWith(isRead: true)).toList();
     });
+    await NotificationApi().markAllAsRead();
     _showFeedbackToast('All notifications marked as read', Icons.done_all_rounded, AppColors.success);
   }
 
-  void _toggleReadStatus(String id) {
+  Future<void> _toggleReadStatus(String id) async {
+    final item = _notifications.firstWhere((n) => n.id == id, orElse: () => _notifications.first);
+    final nextStatus = !item.isRead;
     setState(() {
       _notifications = _notifications.map((n) {
         if (n.id == id) {
-          return n.copyWith(isRead: !n.isRead);
+          return n.copyWith(isRead: nextStatus);
         }
         return n;
       }).toList();
     });
+    if (nextStatus) {
+      await NotificationApi().markAsRead(id);
+    }
   }
 
   List<AppNotificationItem> get _filteredNotifications {
@@ -220,88 +217,20 @@ class _GlobalNotificationCenterScreenState extends ConsumerState<GlobalNotificat
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFFAFAFC),
-      appBar: _buildAppBar(context),
-      body: SafeArea(
-        child: ResponsiveLayout(
-          mobileBody: _buildMobileBody(context),
-          desktopBody: _buildDesktopBody(context),
-        ),
-      ),
-      bottomNavigationBar: _buildBottomNav(context),
-    );
-  }
-
-  PreferredSizeWidget _buildAppBar(BuildContext context) {
-    return AppBar(
-      backgroundColor: Colors.white,
-      elevation: 0,
-      surfaceTintColor: Colors.transparent,
-      title: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(AppSpacing.xs + 2),
-            decoration: BoxDecoration(
-              color: AppColors.primaryBlue.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: const Icon(Icons.notifications_active_rounded, color: AppColors.primaryBlue, size: 22),
-          ),
-          const SizedBox(width: AppSpacing.sm),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Notification Center',
-                style: AppTypography.headingSmall(context).copyWith(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 18,
-                ),
-              ),
-              Text(
-                '$_unreadCount unread priority alerts',
-                style: AppTypography.labelSmall(context).copyWith(
-                  color: _unreadCount > 0 ? AppColors.error : AppColors.textSecondary,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
+    return AppShell(
+      currentPath: '/notifications',
+      title: 'Notification Center',
       actions: [
-        IconButton(
-          tooltip: _soundEnabled ? 'Alert Sounds Active' : 'Alert Sounds Muted',
-          icon: Icon(
-            _soundEnabled ? Icons.volume_up_rounded : Icons.volume_off_rounded,
-            color: _soundEnabled ? AppColors.primaryBlue : AppColors.textSecondary,
+        if (_unreadCount > 0)
+          TextButton.icon(
+            onPressed: _markAllAsRead,
+            icon: const Icon(Icons.done_all_rounded, size: 16),
+            label: Text('Mark Read ($_unreadCount)', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
           ),
-          onPressed: () {
-            setState(() => _soundEnabled = !_soundEnabled);
-            _showFeedbackToast(
-              _soundEnabled ? 'Notification audio chime enabled' : 'Notification chime muted',
-              _soundEnabled ? Icons.volume_up_rounded : Icons.volume_off_rounded,
-              AppColors.primaryBlue,
-            );
-          },
-        ),
-        TextButton.icon(
-          onPressed: _markAllAsRead,
-          icon: const Icon(Icons.done_all_rounded, size: 18, color: AppColors.primaryBlue),
-          label: Text(
-            'Mark All Read',
-            style: AppTypography.labelMedium(context).copyWith(
-              color: AppColors.primaryBlue,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-        ),
-        const SizedBox(width: AppSpacing.xs),
       ],
-      bottom: PreferredSize(
-        preferredSize: const Size.fromHeight(1.0),
-        child: Container(color: AppColors.borderGrey.withValues(alpha: 0.8), height: 1.0),
+      child: ResponsiveLayout(
+        mobileBody: _buildMobileBody(context),
+        desktopBody: _buildDesktopBody(context),
       ),
     );
   }
@@ -311,17 +240,7 @@ class _GlobalNotificationCenterScreenState extends ConsumerState<GlobalNotificat
       children: [
         _buildFilterBar(context),
         Expanded(
-          child: _filteredNotifications.isEmpty
-              ? _buildEmptyState(context)
-              : ListView.separated(
-                  padding: const EdgeInsets.all(AppSpacing.md),
-                  itemCount: _filteredNotifications.length,
-                  separatorBuilder: (_, __) => const SizedBox(height: AppSpacing.md),
-                  itemBuilder: (context, index) {
-                    final item = _filteredNotifications[index];
-                    return _buildNotificationCard(context, item);
-                  },
-                ),
+          child: _buildFeedContent(context, const EdgeInsets.all(AppSpacing.md)),
         ),
       ],
     );
@@ -398,22 +317,33 @@ class _GlobalNotificationCenterScreenState extends ConsumerState<GlobalNotificat
             children: [
               _buildFilterBar(context),
               Expanded(
-                child: _filteredNotifications.isEmpty
-                    ? _buildEmptyState(context)
-                    : ListView.separated(
-                        padding: const EdgeInsets.all(AppSpacing.lg),
-                        itemCount: _filteredNotifications.length,
-                        separatorBuilder: (_, __) => const SizedBox(height: AppSpacing.md),
-                        itemBuilder: (context, index) {
-                          final item = _filteredNotifications[index];
-                          return _buildNotificationCard(context, item);
-                        },
-                      ),
+                child: _buildFeedContent(context, const EdgeInsets.all(AppSpacing.lg)),
               ),
             ],
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildFeedContent(BuildContext context, EdgeInsets padding) {
+    if (_isLoading) {
+      return const NexusLoadingView(message: 'Syncing real-time notifications & dispatch queue...');
+    }
+    if (_errorMessage != null) {
+      return NexusErrorView(message: _errorMessage!, onRetry: _loadNotifications);
+    }
+    if (_filteredNotifications.isEmpty) {
+      return _buildEmptyState(context);
+    }
+    return ListView.separated(
+      padding: padding,
+      itemCount: _filteredNotifications.length,
+      separatorBuilder: (_, __) => const SizedBox(height: AppSpacing.md),
+      itemBuilder: (context, index) {
+        final item = _filteredNotifications[index];
+        return _buildNotificationCard(context, item);
+      },
     );
   }
 
@@ -516,7 +446,7 @@ class _GlobalNotificationCenterScreenState extends ConsumerState<GlobalNotificat
               const SizedBox(width: AppSpacing.xs),
               Switch(
                 value: _showUnreadOnly,
-                activeColor: AppColors.primaryBlue,
+                activeThumbColor: AppColors.primaryBlue,
                 onChanged: (val) => setState(() => _showUnreadOnly = val),
               ),
             ],
@@ -825,65 +755,6 @@ class _GlobalNotificationCenterScreenState extends ConsumerState<GlobalNotificat
           ),
         ],
       ),
-    );
-  }
-
-  Widget _buildBottomNav(BuildContext context) {
-    return NavigationBar(
-      selectedIndex: _currentNavIndex,
-      backgroundColor: Colors.white,
-      indicatorColor: AppColors.primaryBlue.withValues(alpha: 0.12),
-      onDestinationSelected: (index) {
-        setState(() => _currentNavIndex = index);
-        switch (index) {
-          case 0:
-            context.go('/dashboard');
-            break;
-          case 1:
-            context.go('/cases');
-            break;
-          case 2:
-            context.go('/copilot');
-            break;
-          case 3:
-            context.go('/admin/audit-logs');
-            break;
-          case 4:
-            // current screen
-            break;
-        }
-      },
-      destinations: [
-        const NavigationDestination(
-          icon: Icon(Icons.dashboard_outlined),
-          selectedIcon: Icon(Icons.dashboard_rounded, color: AppColors.primaryBlue),
-          label: 'Overview',
-        ),
-        const NavigationDestination(
-          icon: Icon(Icons.work_outline_rounded),
-          selectedIcon: Icon(Icons.work_rounded, color: AppColors.primaryBlue),
-          label: 'Cases',
-        ),
-        const NavigationDestination(
-          icon: Icon(Icons.auto_awesome_outlined),
-          selectedIcon: Icon(Icons.auto_awesome, color: AppColors.primaryBlue),
-          label: 'Copilot',
-        ),
-        const NavigationDestination(
-          icon: Icon(Icons.policy_outlined),
-          selectedIcon: Icon(Icons.policy_rounded, color: AppColors.primaryBlue),
-          label: 'Audit Trail',
-        ),
-        NavigationDestination(
-          icon: Badge(
-            isLabelVisible: _unreadCount > 0,
-            label: Text('$_unreadCount'),
-            child: const Icon(Icons.notifications_none_rounded),
-          ),
-          selectedIcon: const Icon(Icons.notifications_rounded, color: AppColors.primaryBlue),
-          label: 'Alerts',
-        ),
-      ],
     );
   }
 }

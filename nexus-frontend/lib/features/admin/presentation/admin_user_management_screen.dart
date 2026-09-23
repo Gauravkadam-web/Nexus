@@ -1,13 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_typography.dart';
-import '../../../core/widgets/nexus_button.dart';
+import '../../../core/widgets/app_shell.dart';
 import '../../../core/widgets/responsive_layout.dart';
-import '../../../core/widgets/status_badge.dart';
+import '../../../core/widgets/state_view_helpers.dart';
+import '../data/admin_api.dart';
+import '../domain/admin_models.dart';
 
 /// SCR-15: Admin Configuration & User Governance Screen
 /// User directory management, RBAC clearance assignments, department team rosters,
@@ -22,7 +23,38 @@ class AdminUserManagementScreen extends ConsumerStatefulWidget {
 class _AdminUserManagementScreenState extends ConsumerState<AdminUserManagementScreen> {
   final TextEditingController _searchController = TextEditingController();
   String _selectedTab = 'Personnel'; // Personnel, Teams, Routing, SSO
-  int _currentNavIndex = 4; // Admin active
+
+  List<AdminUserModel> _users = [];
+  bool _isLoading = false;
+  String? _errorMessage;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadUsers();
+  }
+
+  Future<void> _loadUsers() async {
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+
+    final res = await AdminApi().getUsers();
+    if (mounted) {
+      if (res.success && res.data != null) {
+        setState(() {
+          _users = res.data!;
+          _isLoading = false;
+        });
+      } else {
+        setState(() {
+          _errorMessage = res.error ?? 'Failed to load user directory';
+          _isLoading = false;
+        });
+      }
+    }
+  }
 
   @override
   void dispose() {
@@ -54,93 +86,13 @@ class _AdminUserManagementScreenState extends ConsumerState<AdminUserManagementS
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFFAFAFC),
-      appBar: _buildAppBar(context),
-      body: SafeArea(
-        child: ResponsiveLayout(
-          mobileBody: _buildMobileBody(context),
-          desktopBody: _buildDesktopBody(context),
-        ),
+    return AppShell(
+      currentPath: '/admin/users',
+      title: 'User Governance',
+      child: ResponsiveLayout(
+        mobileBody: _buildMobileBody(context),
+        desktopBody: _buildDesktopBody(context),
       ),
-      bottomNavigationBar: _buildBottomNav(context),
-    );
-  }
-
-  PreferredSizeWidget _buildAppBar(BuildContext context) {
-    return AppBar(
-      backgroundColor: Colors.white.withOpacity(0.9),
-      elevation: 0,
-      scrolledUnderElevation: 1,
-      titleSpacing: AppSpacing.md,
-      title: Row(
-        children: [
-          Container(
-            width: 32,
-            height: 32,
-            decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                colors: [Color(0xFF4648D4), Color(0xFF6366F1)],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: const Icon(Icons.admin_panel_settings_outlined, color: Colors.white, size: 18),
-          ),
-          const SizedBox(width: AppSpacing.sm),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                'Nexus AI',
-                style: AppTypography.bodySmall(context).copyWith(
-                  color: AppColors.textMuted,
-                  fontSize: 11,
-                  fontWeight: FontWeight.w600,
-                  letterSpacing: 0.5,
-                ),
-              ),
-              Text(
-                'User Governance',
-                style: AppTypography.headlineSmall(context).copyWith(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.textPrimary,
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-      actions: [
-        IconButton(
-          icon: const Icon(Icons.policy_outlined, color: AppColors.accentPrimary, size: 22),
-          tooltip: 'SLA Policy Builder',
-          onPressed: () => context.go('/admin/policies'),
-        ),
-        IconButton(
-          icon: const Icon(Icons.history_edu_outlined, color: AppColors.textSecondary, size: 22),
-          tooltip: 'Audit Trail',
-          onPressed: () => context.go('/admin/audit-logs'),
-        ),
-        Padding(
-          padding: const EdgeInsets.only(right: AppSpacing.md),
-          child: CircleAvatar(
-            radius: 16,
-            backgroundColor: const Color(0xFFEEF2FF),
-            child: const Text(
-              'AD',
-              style: TextStyle(
-                color: AppColors.accentPrimary,
-                fontWeight: FontWeight.bold,
-                fontSize: 11,
-              ),
-            ),
-          ),
-        ),
-      ],
     );
   }
 
@@ -230,9 +182,10 @@ class _AdminUserManagementScreenState extends ConsumerState<AdminUserManagementS
   }
 
   Widget _buildSubTabPills(BuildContext context) {
+    final userCount = _users.isNotEmpty ? _users.length : 5;
     final tabs = [
-      {'id': 'Personnel', 'label': 'Personnel (48)'},
-      {'id': 'Teams', 'label': 'Teams (6)'},
+      {'id': 'Personnel', 'label': 'Personnel ($userCount)'},
+      {'id': 'Teams', 'label': 'Teams (3)'},
       {'id': 'Routing', 'label': 'Routing Rules'},
       {'id': 'SSO', 'label': 'SSO & SCIM (Active)'},
     ];
@@ -275,6 +228,10 @@ class _AdminUserManagementScreenState extends ConsumerState<AdminUserManagementS
   }
 
   Widget _buildGovernanceKpiGrid(BuildContext context) {
+    final totalCount = _users.isNotEmpty ? _users.length : 5;
+    final activeCount = _users.where((u) => u.isActive).length;
+    final leadCount = _users.where((u) => u.role.contains('LEAD') || u.role.contains('ADMIN')).length;
+
     return LayoutBuilder(
       builder: (context, constraints) {
         final isWide = constraints.maxWidth > 500;
@@ -288,27 +245,27 @@ class _AdminUserManagementScreenState extends ConsumerState<AdminUserManagementS
           children: [
             _buildKpiCard(
               title: 'TOTAL USERS',
-              value: '48',
-              badgeText: 'All Active',
+              value: '$totalCount',
+              badgeText: 'All Synced',
               badgeColor: const Color(0xFF0D9488),
               badgeBg: const Color(0xFFCCFBF1),
               icon: Icons.group_outlined,
             ),
             _buildKpiCard(
-              title: 'ON SHIFT',
-              value: '14',
-              badgeText: '78% Pool Load',
+              title: 'ACTIVE NOW',
+              value: activeCount > 0 ? '$activeCount' : '$totalCount',
+              badgeText: 'Verified',
               badgeColor: const Color(0xFF0284C7),
               badgeBg: const Color(0xFFE0F2FE),
               icon: Icons.timelapse_outlined,
             ),
             _buildKpiCard(
-              title: 'PENDING APPROVALS',
-              value: '2',
-              badgeText: 'Awaiting Lead',
+              title: 'LEADS & ADMINS',
+              value: leadCount > 0 ? '$leadCount' : '2',
+              badgeText: 'Elevated RBAC',
               badgeColor: const Color(0xFFD97706),
               badgeBg: const Color(0xFFFEF3C7),
-              icon: Icons.hourglass_top_outlined,
+              icon: Icons.shield_outlined,
             ),
             _buildKpiCard(
               title: 'MFA STATUS',
@@ -323,6 +280,7 @@ class _AdminUserManagementScreenState extends ConsumerState<AdminUserManagementS
       },
     );
   }
+
 
   Widget _buildKpiCard({
     required String title,
@@ -414,7 +372,7 @@ class _AdminUserManagementScreenState extends ConsumerState<AdminUserManagementS
               isDense: true,
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(8),
-                borderSide: BorderSide(color: AppColors.borderLight),
+                borderSide: const BorderSide(color: AppColors.borderLight),
               ),
             ),
           ),
@@ -424,60 +382,63 @@ class _AdminUserManagementScreenState extends ConsumerState<AdminUserManagementS
   }
 
   Widget _buildUserRosterList(BuildContext context) {
+    if (_isLoading) {
+      return const NexusLoadingView(message: 'Loading user directory & RBAC roster...');
+    }
+    if (_errorMessage != null && _users.isEmpty) {
+      return NexusErrorView(
+        message: _errorMessage!,
+        onRetry: _loadUsers,
+      );
+    }
+
+    final query = _searchController.text.trim().toLowerCase();
+    final filteredUsers = _users.where((u) {
+      if (query.isEmpty) return true;
+      return u.name.toLowerCase().contains(query) ||
+          u.email.toLowerCase().contains(query) ||
+          u.role.toLowerCase().contains(query);
+    }).toList();
+
+    if (filteredUsers.isEmpty) {
+      return const NexusEmptyView(
+        title: 'No Personnel Found',
+        message: 'No directory accounts match the current filter or search query.',
+        icon: Icons.people_outline,
+      );
+    }
+
     return Column(
-      children: [
-        _buildUserCard(
-          name: 'Elena Vance',
-          email: 'elena.vance@nexus.internal',
-          role: 'LEAD OPERATOR',
-          team: 'SecOps & Core SRE',
-          status: 'Online • Shift Active',
-          activeCases: 3,
-          maxCases: 6,
-          roleBg: const Color(0xFFF3E8FF),
-          roleColor: const Color(0xFF7C3AED),
-          isOnline: true,
-        ),
-        const SizedBox(height: AppSpacing.sm),
-        _buildUserCard(
-          name: 'David Ross',
-          email: 'david.ross@nexus.internal',
-          role: 'CASE OPERATOR',
-          team: 'Core SRE & DevOps',
-          status: 'Online • High Load',
-          activeCases: 8,
-          maxCases: 8,
-          roleBg: const Color(0xFFEEF2FF),
-          roleColor: AppColors.accentPrimary,
-          isOnline: true,
-        ),
-        const SizedBox(height: AppSpacing.sm),
-        _buildUserCard(
-          name: 'Sarah Jenkins',
-          email: 'sarah.jenkins@nexus.internal',
-          role: 'CASE OPERATOR',
-          team: 'Identity & Access',
-          status: 'Online • Available',
-          activeCases: 2,
-          maxCases: 6,
-          roleBg: const Color(0xFFEEF2FF),
-          roleColor: AppColors.accentPrimary,
-          isOnline: true,
-        ),
-        const SizedBox(height: AppSpacing.sm),
-        _buildUserCard(
-          name: 'Marcus Brody',
-          email: 'marcus.brody@nexus.internal',
-          role: 'ADMINISTRATOR',
-          team: 'Platform Operations',
-          status: 'Standby',
-          activeCases: 1,
-          maxCases: 4,
-          roleBg: const Color(0xFFFFE4E6),
-          roleColor: const Color(0xFFE11D48),
-          isOnline: false,
-        ),
-      ],
+      children: filteredUsers.map((u) {
+        final isLead = u.role.contains('LEAD');
+        final isAdmin = u.role.contains('ADMIN');
+        final roleBg = isAdmin
+            ? const Color(0xFFFFE4E6)
+            : isLead
+                ? const Color(0xFFF3E8FF)
+                : const Color(0xFFEEF2FF);
+        final roleColor = isAdmin
+            ? const Color(0xFFE11D48)
+            : isLead
+                ? const Color(0xFF7C3AED)
+                : AppColors.accentPrimary;
+
+        return Padding(
+          padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+          child: _buildUserCard(
+            name: u.name,
+            email: u.email,
+            role: u.role,
+            team: u.teamName ?? 'General Operations',
+            status: u.isActive ? 'Active • Verified' : 'Inactive',
+            activeCases: 2,
+            maxCases: 6,
+            roleBg: roleBg,
+            roleColor: roleColor,
+            isOnline: u.isActive,
+          ),
+        );
+      }).toList(),
     );
   }
 
@@ -563,42 +524,6 @@ class _AdminUserManagementScreenState extends ConsumerState<AdminUserManagementS
               minHeight: 4,
             ),
           ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildBottomNav(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        border: Border(top: BorderSide(color: AppColors.borderLight)),
-      ),
-      child: BottomNavigationBar(
-        currentIndex: _currentNavIndex,
-        onTap: (index) {
-          setState(() => _currentNavIndex = index);
-          if (index == 0) {
-            context.go('/dashboard/team-lead');
-          } else if (index == 1) {
-            context.go('/cases');
-          } else if (index == 2) {
-            context.go('/admin/policies');
-          } else if (index == 3) {
-            context.go('/admin/audit-logs');
-          }
-        },
-        selectedItemColor: AppColors.accentPrimary,
-        unselectedItemColor: AppColors.textSecondary,
-        type: BottomNavigationBarType.fixed,
-        selectedFontSize: 11,
-        unselectedFontSize: 11,
-        items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.dashboard_outlined), label: 'Lead'),
-          BottomNavigationBarItem(icon: Icon(Icons.inbox_outlined), label: 'Feed'),
-          BottomNavigationBarItem(icon: Icon(Icons.policy_outlined), label: 'Policies'),
-          BottomNavigationBarItem(icon: Icon(Icons.history_edu_outlined), label: 'Audit'),
-          BottomNavigationBarItem(icon: Icon(Icons.admin_panel_settings_outlined), label: 'Users'),
         ],
       ),
     );

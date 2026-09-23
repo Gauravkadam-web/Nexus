@@ -5,9 +5,13 @@ import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_typography.dart';
-import '../../../core/widgets/nexus_button.dart';
+import '../../../core/widgets/app_shell.dart';
 import '../../../core/widgets/responsive_layout.dart';
-import '../../../core/widgets/status_badge.dart';
+import '../../../core/widgets/state_view_helpers.dart';
+import '../../case/data/case_repository.dart';
+import '../../case/domain/case_model.dart';
+import '../../copilot/data/copilot_api.dart';
+import '../../copilot/domain/copilot_model.dart';
 
 /// SCR-09: AI Copilot Smart Drafter Screen
 /// Context-aware multi-modal AI operator assistant with root-cause hypothesis cards,
@@ -26,9 +30,106 @@ class AiCopilotSmartDrafterScreen extends ConsumerStatefulWidget {
 
 class _AiCopilotSmartDrafterScreenState extends ConsumerState<AiCopilotSmartDrafterScreen> {
   final TextEditingController _queryController = TextEditingController();
-  final String _draftText =
+  final CopilotApi _copilotApi = CopilotApi();
+
+  CaseModel? _caseDetail;
+  AiAnalysisModel? _aiAnalysis;
+  String _draftText =
       "We have identified intermittent packet drop during Okta token validation on ingress pod-04. Traffic has been successfully rerouted to standby pod-02 while the active cache configuration is safely remediated.";
-  int _currentNavIndex = 1; // Studio / Copilot active
+  String _lastOperatorQuery = 'What is the current hypothesis on the Envoy 504 gateway spike, and what should we tell the customer?';
+  List<CopilotCitationModel> _citations = [];
+  bool _isLoading = false;
+  bool _isDrafterLoading = false;
+  String? _errorMessage;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadCopilotContext();
+  }
+
+  Future<void> _loadCopilotContext() async {
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+
+    final caseId = widget.caseId;
+    final results = await Future.wait([
+      CaseRepository().getCaseDetail(caseId),
+      CaseRepository().getAiAnalysis(caseId),
+    ]);
+
+    final caseRes = results[0] as dynamic;
+    final aiRes = results[1] as dynamic;
+
+    if (mounted) {
+      if (caseRes.success && caseRes.data != null) {
+        setState(() {
+          _caseDetail = caseRes.data as CaseModel;
+          _aiAnalysis = aiRes.success && aiRes.data != null ? (aiRes.data as AiAnalysisModel) : null;
+          _isLoading = false;
+        });
+      } else {
+        setState(() {
+          _errorMessage = caseRes.error ?? 'Failed to load case context for AI Copilot';
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _sendQuery(String query) async {
+    if (query.trim().isEmpty) return;
+
+    setState(() {
+      _lastOperatorQuery = query.trim();
+      _isDrafterLoading = true;
+    });
+    _queryController.clear();
+
+    final res = await _copilotApi.queryCopilot(
+      caseId: widget.caseId,
+      query: _lastOperatorQuery,
+    );
+
+    if (mounted) {
+      setState(() {
+        _isDrafterLoading = false;
+        if (res.success && res.data != null) {
+          _draftText = res.data!.answer;
+          _citations = res.data!.citations;
+          _showFeedbackToast('Copilot synthesized intelligence', Icons.auto_awesome, const Color(0xFF7C3AED));
+        } else {
+          _showFeedbackToast(res.error ?? 'Copilot query failed', Icons.error_outline, const Color(0xFFE11D48));
+        }
+      });
+    }
+  }
+
+  Future<void> _generateDraft({String audience = 'CUSTOMER', String tone = 'TECHNICAL_POLITE'}) async {
+    setState(() {
+      _isDrafterLoading = true;
+    });
+
+    final res = await _copilotApi.draftCommunication(
+      caseId: widget.caseId,
+      audience: audience,
+      tone: tone,
+    );
+
+    if (mounted) {
+      setState(() {
+        _isDrafterLoading = false;
+        if (res.success && res.data != null) {
+          _draftText = res.data!.draftText;
+          _showFeedbackToast('Generated $tone response draft', Icons.mark_chat_read, const Color(0xFF0D9488));
+        } else {
+          _showFeedbackToast(res.error ?? 'Draft generation failed', Icons.error_outline, const Color(0xFFE11D48));
+        }
+      });
+    }
+  }
 
   @override
   void dispose() {
@@ -60,108 +161,20 @@ class _AiCopilotSmartDrafterScreenState extends ConsumerState<AiCopilotSmartDraf
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFFAF8FF),
-      appBar: _buildAppBar(context),
-      body: SafeArea(
-        child: ResponsiveLayout(
-          mobileBody: _buildMobileBody(context),
-          desktopBody: _buildDesktopBody(context),
-        ),
-      ),
-      bottomNavigationBar: _buildBottomNav(context),
-    );
-  }
-
-  PreferredSizeWidget _buildAppBar(BuildContext context) {
-    return AppBar(
-      backgroundColor: Colors.white.withOpacity(0.9),
-      elevation: 0,
-      scrolledUnderElevation: 1,
-      leading: IconButton(
-        icon: const Icon(Icons.arrow_back, color: AppColors.textPrimary),
-        onPressed: () {
-          if (context.canPop()) {
-            context.pop();
-          } else {
-            context.go('/cases/${widget.caseId}/investigation');
-          }
-        },
-      ),
-      titleSpacing: 0,
-      title: Row(
-        children: [
-          Container(
-            width: 32,
-            height: 32,
-            decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                colors: [Color(0xFF831ADA), Color(0xFF4648D4)],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: const Center(
-              child: Text(
-                '✨',
-                style: TextStyle(fontSize: 16),
-              ),
-            ),
-          ),
-          const SizedBox(width: AppSpacing.xs),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Nexus Copilot',
-                style: AppTypography.headlineSmall(context).copyWith(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 15,
+    return AppShell(
+      currentPath: '/dashboard/operator',
+      title: 'AI Copilot Drafter',
+      child: _isLoading
+          ? const NexusLoadingView(message: 'Initializing Nexus AI Copilot & case context...')
+          : _errorMessage != null
+              ? NexusErrorView(
+                  message: _errorMessage!,
+                  onRetry: _loadCopilotContext,
+                )
+              : ResponsiveLayout(
+                  mobileBody: _buildMobileBody(context),
+                  desktopBody: _buildDesktopBody(context),
                 ),
-              ),
-              Text(
-                'OpRAG • Sonnet 3.5',
-                style: AppTypography.labelSmall(context).copyWith(
-                  color: AppColors.textMuted,
-                  letterSpacing: 0.8,
-                  fontSize: 8,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-      actions: [
-        Container(
-          margin: const EdgeInsets.symmetric(vertical: 12),
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-          decoration: BoxDecoration(
-            color: const Color(0xFFFFE4E6),
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: Row(
-            children: [
-              const Icon(Icons.lock, size: 10, color: Color(0xFFE11D48)),
-              const SizedBox(width: 3),
-              Text(
-                widget.caseId.replaceAll('NEX-2026-', ''),
-                style: const TextStyle(color: Color(0xFFE11D48), fontSize: 10, fontWeight: FontWeight.bold, fontFamily: 'JetBrains Mono'),
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(width: AppSpacing.xs),
-        IconButton(
-          onPressed: () {
-            context.push('/cases/${widget.caseId}/resolve');
-          },
-          icon: const Icon(Icons.task_alt, color: Color(0xFF0D9488), size: 22),
-          tooltip: 'Propose Resolution',
-        ),
-        const SizedBox(width: AppSpacing.xs),
-      ],
     );
   }
 
@@ -241,6 +254,12 @@ class _AiCopilotSmartDrafterScreenState extends ConsumerState<AiCopilotSmartDraf
   }
 
   Widget _buildContextUnderlay() {
+    final caseNum = _caseDetail?.caseNumber ?? widget.caseId;
+    final priority = _caseDetail?.priority ?? 'CRITICAL';
+    final title = _caseDetail?.title ?? 'Envoy 504 Gateway Spike across us-east-prod';
+    final description = _caseDetail?.description ??
+        'Cluster telemetry alerts downstream timeouts reaching ingress edge layer. Error budget burn rate 14.8x.';
+
     return Container(
       padding: const EdgeInsets.all(AppSpacing.md),
       decoration: BoxDecoration(
@@ -252,26 +271,35 @@ class _AiCopilotSmartDrafterScreenState extends ConsumerState<AiCopilotSmartDraf
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
-            mainAxisAlignment: MainAxisAlignment.between,
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Row(
                 children: [
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                     decoration: BoxDecoration(color: const Color(0xFFFFE4E6), borderRadius: BorderRadius.circular(8)),
-                    child: const Text('P1 Critical', style: TextStyle(color: Color(0xFFE11D48), fontSize: 9, fontWeight: FontWeight.bold)),
+                    child: Text('${_caseDetail?.severity ?? "P1"} $priority',
+                        style: const TextStyle(color: Color(0xFFE11D48), fontSize: 9, fontWeight: FontWeight.bold)),
                   ),
                   const SizedBox(width: 6),
-                  Text(widget.caseId, style: AppTypography.codeSmall(context).copyWith(fontWeight: FontWeight.bold)),
+                  Text(caseNum, style: AppTypography.codeSmall(context).copyWith(fontWeight: FontWeight.bold)),
                 ],
               ),
-              const Text('SLA: 18m Left', style: TextStyle(color: Color(0xFFE11D48), fontSize: 10, fontWeight: FontWeight.bold, fontFamily: 'JetBrains Mono')),
+              Text(
+                _caseDetail?.slaRiskLevel == 'BREACHED'
+                    ? 'SLA: BREACHED'
+                    : 'SLA: ${_caseDetail?.slaRiskLevel ?? "Active"}',
+                style: const TextStyle(
+                    color: Color(0xFFE11D48), fontSize: 10, fontWeight: FontWeight.bold, fontFamily: 'JetBrains Mono'),
+              ),
             ],
           ),
           const SizedBox(height: 4),
-          const Text('Envoy 504 Gateway Spike across us-east-prod', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-          const Text('Cluster telemetry alerts downstream timeouts reaching ingress edge layer. Error budget burn rate 14.8x.',
-              style: TextStyle(color: AppColors.textSecondary, fontSize: 11)),
+          Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+          Text(description,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(color: AppColors.textSecondary, fontSize: 11)),
         ],
       ),
     );
@@ -284,17 +312,19 @@ class _AiCopilotSmartDrafterScreenState extends ConsumerState<AiCopilotSmartDraf
         color: const Color(0xFFF8FAFC),
         borderRadius: BorderRadius.circular(10),
       ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.between,
+      child: const Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Row(
-            children: const [
-              Icon(Icons.sync_saved_locally, size: 14, color: Color(0xFF4648D4)),
+            children: [
+              Icon(Icons.cloud_done, size: 14, color: Color(0xFF4648D4)),
               SizedBox(width: 6),
-              Text('CONTEXT SYNCED', style: TextStyle(color: AppColors.textSecondary, fontSize: 9, fontWeight: FontWeight.bold, letterSpacing: 0.8)),
+              Text('CONTEXT SYNCED',
+                  style: TextStyle(color: AppColors.textSecondary, fontSize: 9, fontWeight: FontWeight.bold, letterSpacing: 0.8)),
             ],
           ),
-          const Text('14:26:01 UTC', style: TextStyle(color: AppColors.textMuted, fontSize: 9, fontFamily: 'JetBrains Mono')),
+          Text('LIVE STREAM',
+              style: TextStyle(color: AppColors.textMuted, fontSize: 9, fontFamily: 'JetBrains Mono')),
         ],
       ),
     );
@@ -305,28 +335,32 @@ class _AiCopilotSmartDrafterScreenState extends ConsumerState<AiCopilotSmartDraf
       scrollDirection: Axis.horizontal,
       child: Row(
         children: [
-          _buildActionChip(Icons.summarize, 'Summarize Blockers', const Color(0xFF6366F1)),
+          _buildActionChip(Icons.summarize, 'Summarize Blockers', const Color(0xFF6366F1),
+              onTap: () => _sendQuery('Summarize current blocker root cause and resolution status.')),
           const SizedBox(width: AppSpacing.xs),
-          _buildActionChip(Icons.edit_note, 'Draft Customer Update', const Color(0xFF7C3AED), isPurple: true),
+          _buildActionChip(Icons.edit_note, 'Draft Customer Update', const Color(0xFF7C3AED), isPurple: true,
+              onTap: () => _generateDraft(audience: 'CUSTOMER', tone: 'TECHNICAL_POLITE')),
           const SizedBox(width: AppSpacing.xs),
-          _buildActionChip(Icons.troubleshoot, 'Analyze Root-Cause', const Color(0xFF006194)),
+          _buildActionChip(Icons.troubleshoot, 'Analyze Root-Cause', const Color(0xFF006194),
+              onTap: () => _sendQuery('Perform automated diagnostic root-cause breakdown.')),
           const SizedBox(width: AppSpacing.xs),
-          _buildActionChip(Icons.timer, 'Check SLA Risk', const Color(0xFFEA580C)),
+          _buildActionChip(Icons.timer, 'Check SLA Risk', const Color(0xFFEA580C),
+              onTap: () => _sendQuery('Calculate SLA breach trajectory and escalation needs.')),
         ],
       ),
     );
   }
 
-  Widget _buildActionChip(IconData icon, String label, Color iconColor, {bool isPurple = false}) {
+  Widget _buildActionChip(IconData icon, String label, Color iconColor, {bool isPurple = false, VoidCallback? onTap}) {
     return InkWell(
-      onTap: () => _showFeedbackToast('Copilot triggered: $label', icon, isPurple ? const Color(0xFF7C3AED) : AppColors.primary),
+      onTap: onTap ?? () => _showFeedbackToast('Copilot triggered: $label', icon, isPurple ? const Color(0xFF7C3AED) : AppColors.primary),
       borderRadius: BorderRadius.circular(20),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
         decoration: BoxDecoration(
           color: isPurple ? const Color(0xFFFAF5FF) : Colors.white,
           borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: isPurple ? const Color(0xFFC084FC).withOpacity(0.4) : const Color(0xFFE2E8F0)),
+          border: Border.all(color: isPurple ? const Color(0xFFC084FC).withValues(alpha: 0.4) : const Color(0xFFE2E8F0)),
         ),
         child: Row(
           children: [
@@ -366,16 +400,15 @@ class _AiCopilotSmartDrafterScreenState extends ConsumerState<AiCopilotSmartDraf
           children: [
             Row(
               mainAxisSize: MainAxisSize.min,
-              children: const [
-                Text('Elena Vance (Ops Lead)', style: TextStyle(color: Color(0xFFE1E0FF), fontSize: 10, fontWeight: FontWeight.bold)),
-                SizedBox(width: 4),
-                Text('14:25', style: TextStyle(color: Color(0xFFC0C1FF), fontSize: 9, fontFamily: 'JetBrains Mono')),
+              children: [
+                Text('${_caseDetail?.assignedToName ?? "Operator"} (Query)',
+                    style: const TextStyle(color: Color(0xFFE1E0FF), fontSize: 10, fontWeight: FontWeight.bold)),
               ],
             ),
             const SizedBox(height: 4),
-            const Text(
-              'What is the current hypothesis on the Envoy 504 gateway spike, and what should we tell the customer?',
-              style: TextStyle(color: Colors.white, fontSize: 12, height: 1.35),
+            Text(
+              _lastOperatorQuery,
+              style: const TextStyle(color: Colors.white, fontSize: 12, height: 1.35),
             ),
           ],
         ),
@@ -384,30 +417,38 @@ class _AiCopilotSmartDrafterScreenState extends ConsumerState<AiCopilotSmartDraf
   }
 
   Widget _buildAiAnalysisCard() {
+    final confidence = (_aiAnalysis?.confidenceScore != null)
+        ? '${(_aiAnalysis!.confidenceScore! * 100).toInt()}% Match'
+        : '96% Match';
+    final summary = _aiAnalysis?.executiveSummary ??
+        'Cluster node us-east-prod-04 hit memory ceiling at 98.4%, causing evictions of active user sessions and cascading timeouts.';
+
     return Container(
       padding: const EdgeInsets.all(AppSpacing.md),
       decoration: BoxDecoration(
         color: const Color(0xFFFAF5FF),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFC084FC).withOpacity(0.3)),
+        border: Border.all(color: const Color(0xFFC084FC).withValues(alpha: 0.3)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
-            mainAxisAlignment: MainAxisAlignment.between,
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Row(
-                children: const [
+              const Row(
+                children: [
                   Icon(Icons.tune, size: 16, color: Color(0xFF7C3AED)),
                   SizedBox(width: 4),
-                  Text('NEXUS ANALYSIS', style: TextStyle(color: Color(0xFF7C3AED), fontWeight: FontWeight.bold, fontSize: 10, letterSpacing: 0.8)),
+                  Text('NEXUS ANALYSIS',
+                      style: TextStyle(color: Color(0xFF7C3AED), fontWeight: FontWeight.bold, fontSize: 10, letterSpacing: 0.8)),
                 ],
               ),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                 decoration: BoxDecoration(color: const Color(0xFFF3E8FF), borderRadius: BorderRadius.circular(8)),
-                child: const Text('96% Match', style: TextStyle(color: Color(0xFF7C3AED), fontSize: 9, fontWeight: FontWeight.bold)),
+                child: Text(confidence,
+                    style: const TextStyle(color: Color(0xFF7C3AED), fontSize: 9, fontWeight: FontWeight.bold)),
               ),
             ],
           ),
@@ -415,24 +456,31 @@ class _AiCopilotSmartDrafterScreenState extends ConsumerState<AiCopilotSmartDraf
           _buildHypothesisTile(
             icon: Icons.memory,
             iconColor: const Color(0xFFD97706),
-            title: 'Redis Token Cache Exhaustion',
-            desc: 'Cluster node us-east-prod-04 hit memory ceiling at 98.4%, causing evictions of active user sessions.',
+            title: 'Primary Hypothesis: Cache & Buffer Exhaustion',
+            desc: summary,
           ),
           const SizedBox(height: AppSpacing.xs),
           _buildHypothesisTile(
             icon: Icons.hourglass_bottom,
             iconColor: const Color(0xFFE11D48),
             title: 'Cascading Handshake Delays',
-            desc: 'Downstream Okta SSO token verification timing out at the hard 30,000ms ceiling, saturating connection pools.',
+            desc: 'Downstream SSO token verification timing out at the hard ceiling, saturating connection pools.',
           ),
           const SizedBox(height: AppSpacing.sm),
           Row(
             children: [
               const Text('SOURCES:', style: TextStyle(color: AppColors.textMuted, fontSize: 9, fontWeight: FontWeight.bold)),
               const SizedBox(width: 6),
-              _buildSourceChip('Note #2 (D. Ross)'),
-              const SizedBox(width: 4),
-              _buildSourceChip('Envoy Pod #4028'),
+              if (_citations.isNotEmpty)
+                ..._citations.map((c) => Padding(
+                      padding: const EdgeInsets.only(right: 4),
+                      child: _buildSourceChip(c.sourceTitle),
+                    ))
+              else ...[
+                _buildSourceChip('Telemetry Stream'),
+                const SizedBox(width: 4),
+                _buildSourceChip('Envoy Pod Metrics'),
+              ],
             ],
           ),
         ],
@@ -449,7 +497,7 @@ class _AiCopilotSmartDrafterScreenState extends ConsumerState<AiCopilotSmartDraf
     return Container(
       padding: const EdgeInsets.all(AppSpacing.sm),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.9),
+        color: Colors.white.withValues(alpha: 0.9),
         borderRadius: BorderRadius.circular(10),
       ),
       child: Column(
@@ -473,7 +521,8 @@ class _AiCopilotSmartDrafterScreenState extends ConsumerState<AiCopilotSmartDraf
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
       decoration: BoxDecoration(color: const Color(0xFFE2E7FF), borderRadius: BorderRadius.circular(6)),
-      child: Text(label, style: const TextStyle(color: Color(0xFF131B2E), fontSize: 9, fontWeight: FontWeight.bold, fontFamily: 'JetBrains Mono')),
+      child: Text(label,
+          style: const TextStyle(color: Color(0xFF131B2E), fontSize: 9, fontWeight: FontWeight.bold, fontFamily: 'JetBrains Mono')),
     );
   }
 
@@ -496,10 +545,10 @@ class _AiCopilotSmartDrafterScreenState extends ConsumerState<AiCopilotSmartDraf
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
-            mainAxisAlignment: MainAxisAlignment.between,
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Row(
-                children: const [
+              const Row(
+                children: [
                   Icon(Icons.mark_chat_read, size: 16, color: Color(0xFF4648D4)),
                   SizedBox(width: 6),
                   Text('Smart Drafter: Customer Status', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
@@ -508,7 +557,8 @@ class _AiCopilotSmartDrafterScreenState extends ConsumerState<AiCopilotSmartDraf
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                 decoration: BoxDecoration(color: const Color(0xFFE0F2FE), borderRadius: BorderRadius.circular(8)),
-                child: const Text('Polite & Technical', style: TextStyle(color: Color(0xFF0284C7), fontSize: 9, fontWeight: FontWeight.bold)),
+                child: const Text('Polite & Technical',
+                    style: TextStyle(color: Color(0xFF0284C7), fontSize: 9, fontWeight: FontWeight.bold)),
               ),
             ],
           ),
@@ -522,15 +572,32 @@ class _AiCopilotSmartDrafterScreenState extends ConsumerState<AiCopilotSmartDraf
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  '“$_draftText”',
-                  style: const TextStyle(fontSize: 12, height: 1.4, color: AppColors.textPrimary),
-                ),
-                const SizedBox(height: 6),
-                const Align(
-                  alignment: Alignment.centerRight,
-                  child: Text('234 chars • Ready', style: TextStyle(color: AppColors.textMuted, fontSize: 9, fontFamily: 'JetBrains Mono')),
-                ),
+                if (_isDrafterLoading)
+                  const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 16),
+                    child: Center(
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)),
+                          SizedBox(width: 8),
+                          Text('Synthesizing draft response...', style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+                        ],
+                      ),
+                    ),
+                  )
+                else ...[
+                  Text(
+                    '“$_draftText”',
+                    style: const TextStyle(fontSize: 12, height: 1.4, color: AppColors.textPrimary),
+                  ),
+                  const SizedBox(height: 6),
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: Text('${_draftText.length} chars • AI Generated',
+                        style: const TextStyle(color: AppColors.textMuted, fontSize: 9, fontFamily: 'JetBrains Mono')),
+                  ),
+                ],
               ],
             ),
           ),
@@ -545,7 +612,8 @@ class _AiCopilotSmartDrafterScreenState extends ConsumerState<AiCopilotSmartDraf
                     context.push('/cases/${widget.caseId}/investigation');
                   },
                   icon: const Icon(Icons.arrow_forward, size: 14, color: Colors.white),
-                  label: const Text('Insert in Reply', style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold)),
+                  label: const Text('Insert in Reply',
+                      style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold)),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF4648D4),
                     padding: const EdgeInsets.symmetric(vertical: 10),
@@ -558,9 +626,9 @@ class _AiCopilotSmartDrafterScreenState extends ConsumerState<AiCopilotSmartDraf
               Expanded(
                 flex: 3,
                 child: OutlinedButton.icon(
-                  onPressed: () => _showFeedbackToast('Regenerating alternative tone', Icons.refresh, AppColors.primary),
+                  onPressed: () => _generateDraft(audience: 'CUSTOMER', tone: 'EXECUTIVE_BRIEF'),
                   icon: const Icon(Icons.refresh, size: 14),
-                  label: const Text('Retry', style: TextStyle(fontSize: 11)),
+                  label: const Text('Brief', style: TextStyle(fontSize: 11)),
                   style: OutlinedButton.styleFrom(
                     side: const BorderSide(color: Color(0xFFE2E8F0)),
                     padding: const EdgeInsets.symmetric(vertical: 10),
@@ -606,6 +674,7 @@ class _AiCopilotSmartDrafterScreenState extends ConsumerState<AiCopilotSmartDraf
           Expanded(
             child: TextField(
               controller: _queryController,
+              onSubmitted: _sendQuery,
               style: AppTypography.bodySmall(context),
               decoration: const InputDecoration(
                 hintText: 'Ask Copilot or request action...',
@@ -619,14 +688,7 @@ class _AiCopilotSmartDrafterScreenState extends ConsumerState<AiCopilotSmartDraf
             icon: const Icon(Icons.mic, size: 18, color: AppColors.textSecondary),
           ),
           InkWell(
-            onTap: () {
-              if (_queryController.text.trim().isNotEmpty) {
-                _showFeedbackToast('Copilot analyzing query...', Icons.auto_awesome, const Color(0xFF831ADA));
-                setState(() {
-                  _queryController.clear();
-                });
-              }
-            },
+            onTap: () => _sendQuery(_queryController.text),
             borderRadius: BorderRadius.circular(8),
             child: Container(
               width: 32,
@@ -635,47 +697,6 @@ class _AiCopilotSmartDrafterScreenState extends ConsumerState<AiCopilotSmartDraf
               child: const Icon(Icons.arrow_upward, size: 16, color: Colors.white),
             ),
           ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildBottomNav(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.95),
-        border: const Border(top: BorderSide(color: Color(0xFFE2E8F0))),
-      ),
-      child: BottomNavigationBar(
-        currentIndex: _currentNavIndex,
-        onTap: (index) {
-          setState(() {
-            _currentNavIndex = index;
-          });
-          if (index == 0) {
-            context.go('/dashboard/operator/triage');
-          } else if (index == 1) {
-            context.push('/cases/${widget.caseId}/investigation');
-          } else if (index == 2) {
-            context.push('/cases/${widget.caseId}/collaboration');
-          } else if (index == 4) {
-            context.go('/dashboard/requester');
-          }
-        },
-        type: BottomNavigationBarType.fixed,
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        selectedItemColor: const Color(0xFF4648D4),
-        unselectedItemColor: AppColors.textMuted,
-        selectedFontSize: 10,
-        unselectedFontSize: 10,
-        selectedLabelStyle: const TextStyle(fontWeight: FontWeight.bold),
-        items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.inbox_outlined), activeIcon: Icon(Icons.inbox), label: 'Triage'),
-          BottomNavigationBarItem(icon: Icon(Icons.auto_awesome), activeIcon: Icon(Icons.auto_awesome), label: 'Copilot'),
-          BottomNavigationBarItem(icon: Icon(Icons.radar_outlined), activeIcon: Icon(Icons.radar), label: 'Radar'),
-          BottomNavigationBarItem(icon: Icon(Icons.group_outlined), activeIcon: Icon(Icons.group), label: 'Lead'),
-          BottomNavigationBarItem(icon: Icon(Icons.admin_panel_settings_outlined), activeIcon: Icon(Icons.admin_panel_settings), label: 'Portal'),
         ],
       ),
     );

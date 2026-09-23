@@ -6,9 +6,11 @@ import 'package:intl/intl.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_typography.dart';
-import '../../../core/widgets/nexus_button.dart';
+import '../../../core/widgets/app_shell.dart';
 import '../../../core/widgets/responsive_layout.dart';
-import '../../../core/widgets/status_badge.dart';
+import '../../../core/widgets/state_view_helpers.dart';
+import '../../case/domain/case_model.dart';
+import '../../case/presentation/case_state_provider.dart';
 
 /// Filter options for Operator Triage Feed
 enum TriageFilter {
@@ -30,7 +32,12 @@ class OperatorTriageFeedScreen extends ConsumerStatefulWidget {
 class _OperatorTriageFeedScreenState extends ConsumerState<OperatorTriageFeedScreen> {
   TriageFilter _selectedFilter = TriageFilter.assignedToMe;
   final TextEditingController _searchController = TextEditingController();
-  int _currentNavIndex = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    Future.microtask(() => ref.read(caseStateProvider.notifier).loadOperatorTriageData());
+  }
 
   @override
   void dispose() {
@@ -62,117 +69,13 @@ class _OperatorTriageFeedScreenState extends ConsumerState<OperatorTriageFeedScr
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFFAF8FF),
-      appBar: _buildAppBar(context),
-      body: SafeArea(
-        child: ResponsiveLayout(
-          mobileBody: _buildMobileBody(context),
-          desktopBody: _buildDesktopBody(context),
-        ),
+    return AppShell(
+      currentPath: '/dashboard/operator',
+      title: 'Operator Workstation',
+      child: ResponsiveLayout(
+        mobileBody: _buildMobileBody(context),
+        desktopBody: _buildDesktopBody(context),
       ),
-      bottomNavigationBar: _buildBottomNav(context),
-    );
-  }
-
-  PreferredSizeWidget _buildAppBar(BuildContext context) {
-    return AppBar(
-      backgroundColor: Colors.white.withOpacity(0.9),
-      elevation: 0,
-      scrolledUnderElevation: 1,
-      titleSpacing: AppSpacing.md,
-      title: Row(
-        children: [
-          Container(
-            width: 36,
-            height: 36,
-            decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                colors: [Color(0xFF6366F1), Color(0xFF9333EA)],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: const Center(
-              child: Text(
-                'N',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 18,
-                  fontFamily: 'Outfit',
-                ),
-              ),
-            ),
-          ),
-          const SizedBox(width: AppSpacing.sm),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Nexus AI',
-                style: AppTypography.headlineSmall(context).copyWith(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 16,
-                ),
-              ),
-              Text(
-                'OPERATIONS',
-                style: AppTypography.labelSmall(context).copyWith(
-                  color: AppColors.textMuted,
-                  letterSpacing: 1.2,
-                  fontSize: 9,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-      actions: [
-        IconButton(
-          onPressed: () {
-            _showFeedbackToast('Global search index ready', Icons.search, AppColors.primary);
-          },
-          icon: const Icon(Icons.search, color: AppColors.textSecondary, size: 22),
-          tooltip: 'Search cases',
-        ),
-        Stack(
-          alignment: Alignment.center,
-          children: [
-            IconButton(
-              onPressed: () {
-                _showFeedbackToast('2 critical SLA alerts active', Icons.notifications, const Color(0xFFE11D48));
-              },
-              icon: const Icon(Icons.notifications_outlined, color: AppColors.textSecondary, size: 22),
-              tooltip: 'Notifications',
-            ),
-            Positioned(
-              top: 12,
-              right: 12,
-              child: Container(
-                width: 8,
-                height: 8,
-                decoration: BoxDecoration(
-                  color: const Color(0xFFE11D48),
-                  shape: BoxShape.circle,
-                  border: Border.all(color: Colors.white, width: 1.5),
-                ),
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(width: AppSpacing.xs),
-        Padding(
-          padding: const EdgeInsets.only(right: AppSpacing.md),
-          child: CircleAvatar(
-            radius: 16,
-            backgroundColor: AppColors.primary.withOpacity(0.1),
-            child: const Icon(Icons.person, size: 18, color: AppColors.primary),
-          ),
-        ),
-      ],
     );
   }
 
@@ -258,7 +161,7 @@ class _OperatorTriageFeedScreenState extends ConsumerState<OperatorTriageFeedScr
   Widget _buildStationHeader() {
     final utcTimeStr = DateFormat('HH:mm').format(DateTime.now().toUtc());
     return Row(
-      mainAxisAlignment: MainAxisAlignment.between,
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
         Row(
           children: [
@@ -423,12 +326,12 @@ class _OperatorTriageFeedScreenState extends ConsumerState<OperatorTriageFeedScr
         decoration: BoxDecoration(
           color: isSelected
               ? const Color(0xFFEEF2FF)
-              : (isAlert ? const Color(0xFFFFE4E6).withOpacity(0.5) : Colors.white),
+              : (isAlert ? const Color(0xFFFFE4E6).withValues(alpha: 0.5) : Colors.white),
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
             color: isSelected
                 ? const Color(0xFF6366F1)
-                : (isAlert ? const Color(0xFFE11D48).withOpacity(0.3) : const Color(0xFFE2E8F0)),
+                : (isAlert ? const Color(0xFFE11D48).withValues(alpha: 0.3) : const Color(0xFFE2E8F0)),
             width: isSelected ? 1.5 : 1,
           ),
         ),
@@ -448,7 +351,7 @@ class _OperatorTriageFeedScreenState extends ConsumerState<OperatorTriageFeedScr
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
               decoration: BoxDecoration(
-                color: badgeColor.withOpacity(0.15),
+                color: badgeColor.withValues(alpha: 0.15),
                 borderRadius: BorderRadius.circular(10),
               ),
               child: Text(
@@ -553,31 +456,37 @@ class _OperatorTriageFeedScreenState extends ConsumerState<OperatorTriageFeedScr
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Row(
-            mainAxisAlignment: MainAxisAlignment.between,
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                title.toUpperCase(),
-                style: AppTypography.labelSmall(context).copyWith(
-                  color: AppColors.textMuted,
-                  letterSpacing: 0.8,
-                  fontSize: 10,
-                  fontWeight: FontWeight.w700,
+              Expanded(
+                child: Text(
+                  title.toUpperCase(),
+                  overflow: TextOverflow.ellipsis,
+                  style: AppTypography.labelSmall(context).copyWith(
+                    color: AppColors.textMuted,
+                    letterSpacing: 0.8,
+                    fontSize: 10,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
               ),
               if (badgeText != null)
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
-                  decoration: BoxDecoration(
-                    color: badgeBg ?? const Color(0xFFF1F5F9),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Text(
-                    badgeText,
-                    style: TextStyle(
-                      color: badgeTextCol ?? AppColors.textSecondary,
-                      fontSize: 9,
-                      fontWeight: FontWeight.bold,
-                      fontFamily: 'JetBrains Mono',
+                Padding(
+                  padding: const EdgeInsets.only(left: 4),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
+                    decoration: BoxDecoration(
+                      color: badgeBg ?? const Color(0xFFF1F5F9),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Text(
+                      badgeText,
+                      style: TextStyle(
+                        color: badgeTextCol ?? AppColors.textSecondary,
+                        fontSize: 9,
+                        fontWeight: FontWeight.bold,
+                        fontFamily: 'JetBrains Mono',
+                      ),
                     ),
                   ),
                 )
@@ -672,13 +581,13 @@ class _OperatorTriageFeedScreenState extends ConsumerState<OperatorTriageFeedScr
       decoration: BoxDecoration(
         color: const Color(0xFFFAF5FF),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFC084FC).withOpacity(0.3)),
+        border: Border.all(color: const Color(0xFFC084FC).withValues(alpha: 0.3)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
-            mainAxisAlignment: MainAxisAlignment.between,
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Row(
                 children: [
@@ -696,7 +605,7 @@ class _OperatorTriageFeedScreenState extends ConsumerState<OperatorTriageFeedScr
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF831ADA).withOpacity(0.1),
+                  color: const Color(0xFF831ADA).withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: const Text(
@@ -774,7 +683,7 @@ class _OperatorTriageFeedScreenState extends ConsumerState<OperatorTriageFeedScr
 
   Widget _buildFeedSectionHeader() {
     return Row(
-      mainAxisAlignment: MainAxisAlignment.between,
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
         Text(
           'Active Workstream',
@@ -800,77 +709,74 @@ class _OperatorTriageFeedScreenState extends ConsumerState<OperatorTriageFeedScr
   }
 
   Widget _buildCaseFeedList() {
+    final caseState = ref.watch(caseStateProvider);
+    if (caseState.isLoading) {
+      return const NexusLoadingView(message: 'Loading live triage queue...');
+    }
+    if (caseState.errorMessage != null && caseState.assignedCases.isEmpty && caseState.teamCases.isEmpty) {
+      return NexusErrorView(
+        message: caseState.errorMessage!,
+        onRetry: () => ref.read(caseStateProvider.notifier).loadOperatorTriageData(),
+      );
+    }
+
+    List<CaseModel> sourceList;
+    switch (_selectedFilter) {
+      case TriageFilter.assignedToMe:
+        sourceList = caseState.assignedCases;
+        break;
+      case TriageFilter.unassignedTriage:
+        sourceList = caseState.teamCases.where((c) => c.status == 'REPORTED' || c.status == 'UNDERSTOOD' || c.assignedOperatorName == null || c.assignedOperatorName!.isEmpty).toList();
+        break;
+      case TriageFilter.slaBreaching:
+      case TriageFilter.highPriority:
+        sourceList = caseState.assignedCases.where((c) => c.severity == 'CRITICAL' || c.severity == 'HIGH').toList();
+        break;
+    }
+
+    final query = _searchController.text.trim().toLowerCase();
+    if (query.isNotEmpty) {
+      sourceList = sourceList.where((c) => c.title.toLowerCase().contains(query) || c.id.toLowerCase().contains(query) || (c.categoryName?.toLowerCase().contains(query) ?? false)).toList();
+    }
+
+    if (sourceList.isEmpty) {
+      return const NexusEmptyView(
+        title: 'Triage Queue Clear',
+        message: 'No active incidents currently match this filter criteria.',
+        icon: Icons.check_circle_outline,
+      );
+    }
+
     return Column(
-      children: [
-        _buildFeedCard(
-          caseNumber: 'NEX-2026-0104',
-          priorityLabel: 'P1 Critical',
-          priorityBg: const Color(0xFFFFE4E6),
-          priorityTextCol: const Color(0xFFE11D48),
-          statusLabel: 'Investigating',
-          statusBg: const Color(0xFFFEF3C7),
-          statusTextCol: const Color(0xFFD97706),
-          title: 'Authentication Gateway Timeout during SSO federation',
-          description: 'Upstream IDP response latency spiked to 4.8s. 12 enterprise tenants encountering HTTP 504 gateway response errors.',
-          assigneeName: 'Sarah Jenkins',
-          assigneeRole: 'Cloud Ops Lead',
-          slaCountdown: '12m left',
-          slaBg: const Color(0xFFFFE4E6),
-          slaTextCol: const Color(0xFFE11D48),
-          slaPulse: true,
-          secondaryActionText: 'Reassign',
-          onSecondaryAction: () => _showFeedbackToast('Reassignment matrix opened', Icons.swap_horiz, AppColors.primary),
-          primaryActionText: 'Open Studio',
-          onPrimaryAction: () {
-            context.push('/cases/NEX-2026-0104/track');
-          },
-        ),
-        const SizedBox(height: AppSpacing.sm),
-        _buildFeedCard(
-          caseNumber: 'NEX-2026-0087',
-          priorityLabel: 'P1 Critical',
-          priorityBg: const Color(0xFFFFE4E6),
-          priorityTextCol: const Color(0xFFE11D48),
-          statusLabel: 'Investigating',
-          statusBg: const Color(0xFFFEF3C7),
-          statusTextCol: const Color(0xFFD97706),
-          title: 'Kubernetes ingress controller intermittent 502',
-          description: 'Nginx ingress pod OOM restarts detected across us-east-2 cluster 4. Keepalive connection sockets saturated.',
-          assigneeName: 'David Ross',
-          assigneeRole: 'Principal SRE',
-          slaCountdown: '14m left',
-          slaBg: const Color(0xFFFFEDD5),
-          slaTextCol: const Color(0xFFEA580C),
-          secondaryActionText: 'Runbook',
-          secondaryIcon: Icons.menu_book,
-          onSecondaryAction: () => _showFeedbackToast('Runbook KB-4091 loaded', Icons.menu_book, AppColors.primary),
-          primaryActionText: 'Investigate',
-          primaryIcon: Icons.query_stats,
-          onPrimaryAction: () {
-            context.push('/cases/NEX-2026-0087/track');
-          },
-        ),
-        const SizedBox(height: AppSpacing.sm),
-        _buildFeedCard(
-          caseNumber: 'NEX-2026-0098',
-          priorityLabel: 'P2 High',
-          priorityBg: const Color(0xFFFFEDD5),
-          priorityTextCol: const Color(0xFFEA580C),
-          statusLabel: 'Triage',
-          statusBg: const Color(0xFFE0F2FE),
-          statusTextCol: const Color(0xFF0284C7),
-          title: 'Postgres WAL replica lag exceeding 350ms threshold',
-          description: 'Analytical read replica cluster showing steady replication backlog during scheduled month-end aggregation pipeline.',
-          assigneeName: 'Michael Chang',
-          assigneeRole: 'Data Platform Lead',
-          slaCountdown: '28m left',
-          slaBg: const Color(0xFFF2F3FF),
-          slaTextCol: AppColors.textSecondary,
-          fullWidthActionText: 'Assign to Me',
-          fullWidthActionIcon: Icons.person_add,
-          onFullWidthAction: () => _showFeedbackToast('Case assigned to your active queue', Icons.check_circle, const Color(0xFF0D9488)),
-        ),
-      ],
+      children: sourceList.map((c) {
+        final isCritical = c.severity == 'CRITICAL';
+        return Padding(
+          padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+          child: _buildFeedCard(
+            caseNumber: c.id,
+            priorityLabel: isCritical ? 'P1 Critical' : '${c.severity} Priority',
+            priorityBg: isCritical ? const Color(0xFFFFE4E6) : const Color(0xFFFEF3C7),
+            priorityTextCol: isCritical ? const Color(0xFFE11D48) : const Color(0xFFD97706),
+            statusLabel: c.status,
+            statusBg: const Color(0xFFEEF2FF),
+            statusTextCol: AppColors.accentPrimary,
+            title: c.title,
+            description: c.description,
+            assigneeName: c.assignedOperatorName ?? 'Unassigned',
+            assigneeRole: 'Case Operator',
+            slaCountdown: isCritical ? '15m SLA Target' : '4h SLA Target',
+            slaBg: isCritical ? const Color(0xFFFFE4E6) : const Color(0xFFEEF2FF),
+            slaTextCol: isCritical ? const Color(0xFFE11D48) : AppColors.accentPrimary,
+            slaPulse: isCritical,
+            secondaryActionText: 'Reassign',
+            onSecondaryAction: () => _showFeedbackToast('Reassignment matrix opened for ${c.id}', Icons.swap_horiz, AppColors.accentPrimary),
+            primaryActionText: 'Open Studio',
+            onPrimaryAction: () {
+              context.push('/cases/${c.id}/investigation');
+            },
+          ),
+        );
+      }).toList(),
     );
   }
 
@@ -918,7 +824,7 @@ class _OperatorTriageFeedScreenState extends ConsumerState<OperatorTriageFeedScr
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
-            mainAxisAlignment: MainAxisAlignment.between,
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Row(
                 children: [
@@ -987,13 +893,13 @@ class _OperatorTriageFeedScreenState extends ConsumerState<OperatorTriageFeedScr
           ),
           const SizedBox(height: AppSpacing.sm),
           Row(
-            mainAxisAlignment: MainAxisAlignment.between,
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Row(
                 children: [
                   CircleAvatar(
                     radius: 12,
-                    backgroundColor: AppColors.primary.withOpacity(0.15),
+                    backgroundColor: AppColors.primary.withValues(alpha: 0.15),
                     child: Text(
                       assigneeName[0],
                       style: const TextStyle(
@@ -1143,16 +1049,20 @@ class _OperatorTriageFeedScreenState extends ConsumerState<OperatorTriageFeedScr
           ),
         ],
       ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.between,
+      child: Wrap(
+        alignment: WrapAlignment.spaceBetween,
+        crossAxisAlignment: WrapCrossAlignment.center,
+        spacing: AppSpacing.sm,
+        runSpacing: AppSpacing.xs,
         children: [
           Row(
+            mainAxisSize: MainAxisSize.min,
             children: [
               Container(
                 width: 36,
                 height: 36,
                 decoration: BoxDecoration(
-                  color: const Color(0xFFE11D48).withOpacity(0.25),
+                  color: const Color(0xFFE11D48).withValues(alpha: 0.25),
                   shape: BoxShape.circle,
                 ),
                 child: const Icon(Icons.mic, color: Color(0xFFFFE4E6), size: 18),
@@ -1162,6 +1072,7 @@ class _OperatorTriageFeedScreenState extends ConsumerState<OperatorTriageFeedScr
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Row(
+                    mainAxisSize: MainAxisSize.min,
                     children: [
                       Text(
                         'INCIDENT WAR ROOM',
@@ -1203,72 +1114,6 @@ class _OperatorTriageFeedScreenState extends ConsumerState<OperatorTriageFeedScr
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
               elevation: 0,
             ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildBottomNav(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.95),
-        border: const Border(top: BorderSide(color: Color(0xFFE2E8F0))),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x05000000),
-            blurRadius: 10,
-            offset: Offset(0, -2),
-          ),
-        ],
-      ),
-      child: BottomNavigationBar(
-        currentIndex: _currentNavIndex,
-        onTap: (index) {
-          setState(() {
-            _currentNavIndex = index;
-          });
-          if (index == 0) {
-            // Stay on triage
-          } else if (index == 1) {
-            context.push('/cases/NEX-2026-0104/track');
-          } else if (index == 4) {
-            context.go('/dashboard/requester');
-          }
-        },
-        type: BottomNavigationBarType.fixed,
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        selectedItemColor: const Color(0xFF4648D4),
-        unselectedItemColor: AppColors.textMuted,
-        selectedFontSize: 10,
-        unselectedFontSize: 10,
-        selectedLabelStyle: const TextStyle(fontWeight: FontWeight.bold),
-        items: const [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.inbox_outlined),
-            activeIcon: Icon(Icons.inbox),
-            label: 'Triage',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.dataset_outlined),
-            activeIcon: Icon(Icons.dataset),
-            label: 'Studio',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.radar_outlined),
-            activeIcon: Icon(Icons.radar),
-            label: 'Radar',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.group_outlined),
-            activeIcon: Icon(Icons.group),
-            label: 'Lead',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.admin_panel_settings_outlined),
-            activeIcon: Icon(Icons.admin_panel_settings),
-            label: 'Portal',
           ),
         ],
       ),

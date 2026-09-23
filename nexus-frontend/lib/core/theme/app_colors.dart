@@ -13,6 +13,28 @@ class AppColors {
   static const Color lightTextSecondary = Color(0xFF475569);
   static const Color lightTextMuted = Color(0xFF94A3B8);
 
+  // === Convenience Aliases ===
+  static const Color textPrimary = lightTextPrimary;
+  static const Color textSecondary = lightTextSecondary;
+  static const Color textMuted = lightTextMuted;
+  static const Color borderLight = lightBorder;
+  static const Color borderDark = darkBorder;
+  static const Color borderGrey = lightBorder;
+  static const Color surfaceLight = lightSurface;
+  static const Color surfaceDark = darkSurface;
+  static const Color canvasLight = lightCanvas;
+  static const Color canvasDark = darkCanvas;
+  static const Color lightBackground = lightCanvas;
+  static const Color darkBackground = darkCanvas;
+  static const Color primary = accentPrimary;
+  static const Color primaryBlue = accentPrimary;
+  static const Color aiAccent = aiLilac;
+  static const Color success = Color(0xFF10B981);
+  static const Color error = Color(0xFFEF4444);
+  static const Color warning = Color(0xFFF59E0B);
+  static const Color aiBorderLight = Color(0x339333EA);
+  static const Color aiBorderDark = Color(0x33C084FC);
+
   // === Dark Mode (Deep Obsidian) ===
   static const Color darkCanvas = Color(0xFF0D1117);
   static const Color darkSurface = Color(0xFF161B22);

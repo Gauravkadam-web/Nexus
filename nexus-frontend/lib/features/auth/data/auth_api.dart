@@ -21,7 +21,7 @@ class AuthApi {
         (json) => json as Map<String, dynamic>,
       );
     } on DioException catch (e) {
-      final errorMsg = e.response?.data?['error'] as String? ?? e.message ?? 'Login failed';
+      final errorMsg = e.response?.data?['message'] as String? ?? e.response?.data?['error'] as String? ?? e.message ?? 'Login failed';
       return ApiResponse(success: false, error: errorMsg);
     } catch (e) {
       return ApiResponse(success: false, error: e.toString());
@@ -51,7 +51,7 @@ class AuthApi {
         (json) => json as Map<String, dynamic>,
       );
     } on DioException catch (e) {
-      final errorMsg = e.response?.data?['error'] as String? ?? e.message ?? 'Registration failed';
+      final errorMsg = e.response?.data?['message'] as String? ?? e.response?.data?['error'] as String? ?? e.message ?? 'Registration failed';
       return ApiResponse(success: false, error: errorMsg);
     } catch (e) {
       return ApiResponse(success: false, error: e.toString());
@@ -66,7 +66,7 @@ class AuthApi {
         (json) => UserModel.fromJson(json as Map<String, dynamic>),
       );
     } on DioException catch (e) {
-      final errorMsg = e.response?.data?['error'] as String? ?? e.message ?? 'Failed to get profile';
+      final errorMsg = e.response?.data?['message'] as String? ?? e.response?.data?['error'] as String? ?? e.message ?? 'Failed to get profile';
       return ApiResponse(success: false, error: errorMsg);
     } catch (e) {
       return ApiResponse(success: false, error: e.toString());

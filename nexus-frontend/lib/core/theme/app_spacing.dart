@@ -1,4 +1,3 @@
-import 'package:flutter/material.dart';
 
 /// Nexus 8pt Spacious Grid Spacing Tokens
 class AppSpacing {

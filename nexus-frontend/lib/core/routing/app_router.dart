@@ -1,11 +1,9 @@
-import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../features/admin/presentation/admin_sla_policy_builder_screen.dart';
 import '../../features/admin/presentation/admin_user_management_screen.dart';
 import '../../features/analytics/presentation/executive_analytics_kpi_screen.dart';
 import '../../features/audit/presentation/audit_trail_timeline_screen.dart';
-import '../../features/auth/presentation/auth_state_provider.dart';
 import '../../features/auth/presentation/login_screen.dart';
 import '../../features/auth/presentation/register_screen.dart';
 import '../../features/case/presentation/case_create_wizard_screen.dart';
@@ -22,8 +20,6 @@ import '../../features/resolution/presentation/resolution_proposal_closure_scree
 import '../../features/sla/presentation/sla_risk_radar_console_screen.dart';
 
 final appRouterProvider = Provider<GoRouter>((ref) {
-  final authState = ref.watch(authStateProvider);
-
   return GoRouter(
     initialLocation: '/auth/login',
     routes: [

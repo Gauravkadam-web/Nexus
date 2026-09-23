@@ -5,9 +5,11 @@ import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_typography.dart';
-import '../../../core/widgets/nexus_button.dart';
+import '../../../core/widgets/app_shell.dart';
 import '../../../core/widgets/responsive_layout.dart';
-import '../../../core/widgets/status_badge.dart';
+import '../../../core/widgets/state_view_helpers.dart';
+import '../data/sla_api.dart';
+import '../domain/sla_model.dart';
 
 /// SCR-12: SLA Risk Radar & Escalation Console Screen
 /// Multi-tier SLA governance console featuring fleet health gauges,
@@ -21,7 +23,46 @@ class SlaRiskRadarConsoleScreen extends ConsumerStatefulWidget {
 
 class _SlaRiskRadarConsoleScreenState extends ConsumerState<SlaRiskRadarConsoleScreen> {
   String _selectedFilter = 'ALL'; // ALL, IMMINENT, WATCH, ESCALATED
-  int _currentNavIndex = 2; // Radar active
+  List<SlaRiskCaseModel> _atRiskCases = [];
+  List<SlaRiskCaseModel> _breachedCases = [];
+  bool _isLoading = false;
+  String? _errorMessage;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadSlaData();
+  }
+
+  Future<void> _loadSlaData() async {
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+
+    final results = await Future.wait([
+      SlaApi().getAtRiskCases(),
+      SlaApi().getBreachedCases(),
+    ]);
+
+    final riskRes = results[0] as dynamic;
+    final breachRes = results[1] as dynamic;
+
+    if (mounted) {
+      if (riskRes.success && riskRes.data != null) {
+        setState(() {
+          _atRiskCases = riskRes.data as List<SlaRiskCaseModel>;
+          _breachedCases = breachRes.success && breachRes.data != null ? (breachRes.data as List<SlaRiskCaseModel>) : [];
+          _isLoading = false;
+        });
+      } else {
+        setState(() {
+          _errorMessage = riskRes.error ?? 'Failed to load SLA radar telemetry';
+          _isLoading = false;
+        });
+      }
+    }
+  }
 
   void _showFeedbackToast(String message, IconData icon, Color color) {
     ScaffoldMessenger.of(context).showSnackBar(
@@ -47,107 +88,13 @@ class _SlaRiskRadarConsoleScreenState extends ConsumerState<SlaRiskRadarConsoleS
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFFAFAFC),
-      appBar: _buildAppBar(context),
-      body: SafeArea(
-        child: ResponsiveLayout(
-          mobileBody: _buildMobileBody(context),
-          desktopBody: _buildDesktopBody(context),
-        ),
+    return AppShell(
+      currentPath: '/sla/risk-console',
+      title: 'SLA Risk Radar',
+      child: ResponsiveLayout(
+        mobileBody: _buildMobileBody(context),
+        desktopBody: _buildDesktopBody(context),
       ),
-      bottomNavigationBar: _buildBottomNav(context),
-    );
-  }
-
-  PreferredSizeWidget _buildAppBar(BuildContext context) {
-    return AppBar(
-      backgroundColor: Colors.white.withOpacity(0.9),
-      elevation: 0,
-      scrolledUnderElevation: 1,
-      titleSpacing: AppSpacing.md,
-      title: Row(
-        children: [
-          Container(
-            width: 32,
-            height: 32,
-            decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                colors: [Color(0xFFE11D48), Color(0xFFFB7185)],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: const Icon(Icons.radar, color: Colors.white, size: 18),
-          ),
-          const SizedBox(width: AppSpacing.sm),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                'Nexus AI',
-                style: AppTypography.bodySmall(context).copyWith(
-                  color: AppColors.textMuted,
-                  fontSize: 11,
-                  fontWeight: FontWeight.w600,
-                  letterSpacing: 0.5,
-                ),
-              ),
-              Text(
-                'SLA Risk Radar',
-                style: AppTypography.headlineSmall(context).copyWith(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.textPrimary,
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-      actions: [
-        IconButton(
-          icon: const Icon(Icons.tune, color: AppColors.textSecondary, size: 22),
-          onPressed: () => _showFeedbackToast('SLA Filter Drawer Opened', Icons.filter_alt, AppColors.accentPrimary),
-        ),
-        Stack(
-          children: [
-            IconButton(
-              icon: const Icon(Icons.notifications_none, color: AppColors.textSecondary, size: 22),
-              onPressed: () => _showFeedbackToast('3 imminent breach warnings active', Icons.warning, const Color(0xFFE11D48)),
-            ),
-            Positioned(
-              top: 10,
-              right: 10,
-              child: Container(
-                width: 8,
-                height: 8,
-                decoration: const BoxDecoration(
-                  color: Color(0xFFE11D48),
-                  shape: BoxShape.circle,
-                ),
-              ),
-            ),
-          ],
-        ),
-        Padding(
-          padding: const EdgeInsets.only(right: AppSpacing.md),
-          child: CircleAvatar(
-            radius: 16,
-            backgroundColor: const Color(0xFFFFE4E6),
-            child: const Text(
-              'SL',
-              style: TextStyle(
-                color: Color(0xFFE11D48),
-                fontWeight: FontWeight.bold,
-                fontSize: 11,
-              ),
-            ),
-          ),
-        ),
-      ],
     );
   }
 
@@ -259,8 +206,8 @@ class _SlaRiskRadarConsoleScreenState extends ConsumerState<SlaRiskRadarConsoleS
               color: const Color(0xFFEEF2FF),
               borderRadius: BorderRadius.circular(12),
             ),
-            child: Row(
-              children: const [
+            child: const Row(
+              children: [
                 Icon(Icons.sync, size: 12, color: AppColors.accentPrimary),
                 SizedBox(width: 4),
                 Text(
@@ -478,7 +425,7 @@ class _SlaRiskRadarConsoleScreenState extends ConsumerState<SlaRiskRadarConsoleS
       decoration: BoxDecoration(
         color: const Color(0xFFFAF5FF),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFC084FC).withOpacity(0.3)),
+        border: Border.all(color: const Color(0xFFC084FC).withValues(alpha: 0.3)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -486,8 +433,8 @@ class _SlaRiskRadarConsoleScreenState extends ConsumerState<SlaRiskRadarConsoleS
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Row(
-                children: const [
+              const Row(
+                children: [
                   Text('✨', style: TextStyle(fontSize: 16)),
                   SizedBox(width: 6),
                   Text(
@@ -578,47 +525,58 @@ class _SlaRiskRadarConsoleScreenState extends ConsumerState<SlaRiskRadarConsoleS
   }
 
   Widget _buildAtRiskCasesList(BuildContext context) {
+    if (_isLoading) {
+      return const NexusLoadingView(message: 'Calculating dynamic SLA burn velocity & risk trajectories...');
+    }
+    if (_errorMessage != null) {
+      return NexusErrorView(message: _errorMessage!, onRetry: _loadSlaData);
+    }
+
+    List<SlaRiskCaseModel> displayCases = [];
+    if (_selectedFilter == 'ALL') {
+      displayCases = [..._breachedCases, ..._atRiskCases];
+    } else if (_selectedFilter == 'IMMINENT') {
+      displayCases = _atRiskCases.where((c) => c.remainingMinutes <= 30).toList();
+    } else if (_selectedFilter == 'WATCH') {
+      displayCases = _atRiskCases.where((c) => c.remainingMinutes > 30).toList();
+    } else if (_selectedFilter == 'ESCALATED') {
+      displayCases = _breachedCases;
+    }
+
+    if (displayCases.isEmpty) {
+      return const NexusEmptyView(
+        title: 'No Cases at SLA Risk',
+        message: 'All active cases are currently within normal SLA operational parameters.',
+        icon: Icons.shield_outlined,
+      );
+    }
+
     return Column(
-      children: [
-        _buildRadarCaseCard(
-          caseId: 'NEX-2026-0104',
-          title: 'SSO Auth Gateway Timeout during Federation',
-          severity: 'P1 CRITICAL',
-          status: 'INVESTIGATING',
-          assignee: 'David Ross',
-          consumedPercent: 92,
-          countdownText: '⏳ 28m 14s Left',
-          escalationTier: 'TIER 2 ESCALATED',
-          isBreached: false,
-          isImminent: true,
-        ),
-        const SizedBox(height: AppSpacing.sm),
-        _buildRadarCaseCard(
-          caseId: 'NEX-2026-0102',
-          title: 'Okta SCIM Sync Latency Spike & Token Dropping',
-          severity: 'P2 HIGH',
-          status: 'INVESTIGATING',
-          assignee: 'Elena Vance',
-          consumedPercent: 78,
-          countdownText: '⏳ 01h 14m Left',
-          escalationTier: 'RECOMMENDED',
-          isBreached: false,
-          isImminent: false,
-        ),
-        const SizedBox(height: AppSpacing.sm),
-        _buildRadarCaseCard(
-          caseId: 'NEX-2026-0099',
-          title: 'Stripe Webhook Retries Exhausted on Billing API',
-          severity: 'P2 HIGH',
-          status: 'UNDERSTOOD',
-          assignee: 'Unassigned',
-          consumedPercent: 65,
-          countdownText: '⏳ 01h 45m Left',
-          escalationTier: 'TIER 1 NOTIFIED',
-          isBreached: false,
-          isImminent: false,
-        ),
-      ],
+      children: displayCases.map((c) {
+        final isBreached = c.remainingMinutes <= 0;
+        final isImminent = c.remainingMinutes > 0 && c.remainingMinutes <= 30;
+        final countdownText = isBreached
+            ? '🔥 BREACHED (${c.remainingMinutes.abs()}m ago)'
+            : '⏳ ${c.remainingMinutes}m Left';
+
+        final consumedPercent = (c.breachProbability * 100).toInt().clamp(10, 100);
+
+        return Padding(
+          padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+          child: _buildRadarCaseCard(
+            caseId: c.caseNumber.isNotEmpty ? c.caseNumber : c.caseId,
+            title: c.title,
+            severity: c.priority,
+            status: c.status,
+            assignee: c.assignedOperator.isNotEmpty ? c.assignedOperator : 'Unassigned',
+            consumedPercent: consumedPercent,
+            countdownText: countdownText,
+            escalationTier: isBreached ? 'BREACH ESCALATED' : (isImminent ? 'TIER 2 IMMINENT' : 'MONITORING'),
+            isBreached: isBreached,
+            isImminent: isImminent,
+          ),
+        );
+      }).toList(),
     );
   }
 
@@ -649,7 +607,7 @@ class _SlaRiskRadarConsoleScreenState extends ConsumerState<SlaRiskRadarConsoleS
         border: Border.all(color: isImminent ? const Color(0xFFFDA4AF) : AppColors.borderLight),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.02),
+            color: Colors.black.withValues(alpha: 0.02),
             blurRadius: 4,
             offset: const Offset(0, 1),
           ),
@@ -743,7 +701,7 @@ class _SlaRiskRadarConsoleScreenState extends ConsumerState<SlaRiskRadarConsoleS
                     decoration: BoxDecoration(
                       color: const Color(0xFFFAF5FF),
                       borderRadius: BorderRadius.circular(4),
-                      border: Border.all(color: const Color(0xFFC084FC).withOpacity(0.3)),
+                      border: Border.all(color: const Color(0xFFC084FC).withValues(alpha: 0.3)),
                     ),
                     child: Text(
                       escalationTier,
@@ -780,41 +738,6 @@ class _SlaRiskRadarConsoleScreenState extends ConsumerState<SlaRiskRadarConsoleS
               ),
             ],
           ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildBottomNav(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        border: Border(top: BorderSide(color: AppColors.borderLight)),
-      ),
-      child: BottomNavigationBar(
-        currentIndex: _currentNavIndex,
-        onTap: (index) {
-          setState(() => _currentNavIndex = index);
-          if (index == 0) {
-            context.go('/dashboard/team-lead');
-          } else if (index == 1) {
-            context.go('/cases');
-          } else if (index == 2) {
-            // Already on radar
-          } else if (index == 3) {
-            context.go('/dashboard/requester');
-          }
-        },
-        selectedItemColor: AppColors.accentPrimary,
-        unselectedItemColor: AppColors.textSecondary,
-        type: BottomNavigationBarType.fixed,
-        selectedFontSize: 11,
-        unselectedFontSize: 11,
-        items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.dashboard_outlined), label: 'Lead'),
-          BottomNavigationBarItem(icon: Icon(Icons.inbox_outlined), label: 'Feed'),
-          BottomNavigationBarItem(icon: Icon(Icons.radar_outlined), label: 'Radar'),
-          BottomNavigationBarItem(icon: Icon(Icons.person_outline), label: 'Portal'),
         ],
       ),
     );

@@ -308,9 +308,10 @@ nexus-backend/
 │   │           ├── V2__create_case_tables.sql
 │   │           ├── V3__create_collaboration_tables.sql
 │   │           ├── V4__create_ai_tables.sql
-│   │           ├── V5__create_sla_escalation_tables.sql
-│   │           ├── V6__create_notification_resolution_tables.sql
-│   │           └── V7__create_audit_problem_tables.sql
+│   │           ├── V5__create_case_relations_tables.sql
+│   │           ├── V6__create_sla_escalation_notifications_tables.sql
+│   │           ├── V7__create_resolution_problems_tables.sql
+│   │           └── V8__create_audit_logs_and_search_indexes.sql
 │   │
 │   └── test/
 │       └── java/com/nexus/

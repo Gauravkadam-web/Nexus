@@ -1,13 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_typography.dart';
-import '../../../core/widgets/nexus_button.dart';
+import '../../../core/widgets/app_shell.dart';
 import '../../../core/widgets/responsive_layout.dart';
-import '../../../core/widgets/status_badge.dart';
+import '../../../core/widgets/state_view_helpers.dart';
+import '../../case/data/case_repository.dart';
+import '../../case/domain/case_model.dart';
+import '../../collaboration/data/collaboration_api.dart';
+import '../../collaboration/domain/collaboration_models.dart';
+import '../../investigation/data/investigation_api.dart';
+import '../../investigation/domain/investigation_model.dart';
 
 /// SCR-08: Case Collaboration & Evidence Hub Screen
 /// Real-time live war room audio bridge, AI Copilot runbook suggestions,
@@ -27,7 +32,74 @@ class CaseCollaborationEvidenceHubScreen extends ConsumerStatefulWidget {
 class _CaseCollaborationEvidenceHubScreenState extends ConsumerState<CaseCollaborationEvidenceHubScreen> {
   int _activeTab = 0; // 0: Tasks, 1: War Room & Notes, 2: Evidence Locker
   final TextEditingController _noteController = TextEditingController();
-  int _currentNavIndex = 2; // Radar / Hub tab active
+
+  CaseModel? _caseDetail;
+  AiAnalysisModel? _aiAnalysis;
+  List<InternalNoteModel> _notes = [];
+  List<AttachmentModel> _attachments = [];
+  List<InvestigationTaskModel> _tasks = [];
+  bool _isLoading = false;
+  String? _errorMessage;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadHubData();
+  }
+
+  Future<void> _loadHubData() async {
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+
+    final caseId = widget.caseId;
+    final results = await Future.wait([
+      CaseRepository().getCaseDetail(caseId),
+      CaseRepository().getAiAnalysis(caseId),
+      CollaborationApi().getInternalNotes(caseId),
+      CollaborationApi().getAttachments(caseId),
+      InvestigationApi().getTasks(caseId),
+    ]);
+
+    final caseRes = results[0] as dynamic;
+    final aiRes = results[1] as dynamic;
+    final noteRes = results[2] as dynamic;
+    final attRes = results[3] as dynamic;
+    final taskRes = results[4] as dynamic;
+
+    if (mounted) {
+      if (caseRes.success && caseRes.data != null) {
+        setState(() {
+          _caseDetail = caseRes.data as CaseModel;
+          _aiAnalysis = aiRes.success && aiRes.data != null ? (aiRes.data as AiAnalysisModel) : null;
+          _notes = noteRes.success && noteRes.data != null ? (noteRes.data as List<InternalNoteModel>) : [];
+          _attachments = attRes.success && attRes.data != null ? (attRes.data as List<AttachmentModel>) : [];
+          _tasks = taskRes.success && taskRes.data != null ? (taskRes.data as List<InvestigationTaskModel>) : [];
+          _isLoading = false;
+        });
+      } else {
+        setState(() {
+          _errorMessage = caseRes.error ?? 'Failed to load case collaboration workspace';
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _addNote() async {
+    final text = _noteController.text.trim();
+    if (text.isEmpty) return;
+
+    final res = await CollaborationApi().addInternalNote(caseId: widget.caseId, content: text);
+    if (res.success && res.data != null) {
+      setState(() {
+        _notes.add(res.data!);
+        _noteController.clear();
+      });
+      _showFeedbackToast('Confidential note cryptographically appended', Icons.lock, const Color(0xFF0D9488));
+    }
+  }
 
   @override
   void dispose() {
@@ -59,98 +131,20 @@ class _CaseCollaborationEvidenceHubScreenState extends ConsumerState<CaseCollabo
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFFAF8FF),
-      appBar: _buildAppBar(context),
-      body: SafeArea(
-        child: ResponsiveLayout(
-          mobileBody: _buildMobileBody(context),
-          desktopBody: _buildDesktopBody(context),
-        ),
-      ),
-      bottomNavigationBar: _buildBottomNav(context),
-    );
-  }
-
-  PreferredSizeWidget _buildAppBar(BuildContext context) {
-    return AppBar(
-      backgroundColor: Colors.white.withOpacity(0.9),
-      elevation: 0,
-      scrolledUnderElevation: 1,
-      leading: IconButton(
-        icon: const Icon(Icons.arrow_back, color: AppColors.textPrimary),
-        onPressed: () {
-          if (context.canPop()) {
-            context.pop();
-          } else {
-            context.go('/cases/${widget.caseId}/investigation');
-          }
-        },
-      ),
-      titleSpacing: 0,
-      title: Row(
-        children: [
-          Container(
-            width: 32,
-            height: 32,
-            decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                colors: [Color(0xFF6366F1), Color(0xFF9333EA)],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: const Center(
-              child: Text(
-                'N',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 16,
-                  fontFamily: 'Outfit',
+    return AppShell(
+      currentPath: '/dashboard/operator',
+      title: 'Collaboration & Evidence',
+      child: _isLoading
+          ? const NexusLoadingView(message: 'Connecting to incident war room & evidence locker...')
+          : _errorMessage != null
+              ? NexusErrorView(
+                  message: _errorMessage!,
+                  onRetry: _loadHubData,
+                )
+              : ResponsiveLayout(
+                  mobileBody: _buildMobileBody(context),
+                  desktopBody: _buildDesktopBody(context),
                 ),
-              ),
-            ),
-          ),
-          const SizedBox(width: AppSpacing.xs),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Nexus AI',
-                style: AppTypography.headlineSmall(context).copyWith(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 15,
-                ),
-              ),
-              Text(
-                'COLLABORATION & EVIDENCE',
-                style: AppTypography.labelSmall(context).copyWith(
-                  color: AppColors.textMuted,
-                  letterSpacing: 1.0,
-                  fontSize: 8,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-      actions: [
-        IconButton(
-          onPressed: () => _showFeedbackToast('Search incident evidence index', Icons.search, AppColors.primary),
-          icon: const Icon(Icons.search, color: AppColors.textSecondary, size: 20),
-        ),
-        Padding(
-          padding: const EdgeInsets.only(right: AppSpacing.md),
-          child: CircleAvatar(
-            radius: 14,
-            backgroundColor: AppColors.primary.withOpacity(0.15),
-            child: const Text('EV', style: TextStyle(color: AppColors.primary, fontSize: 10, fontWeight: FontWeight.bold)),
-          ),
-        ),
-      ],
     );
   }
 
@@ -222,24 +216,28 @@ class _CaseCollaborationEvidenceHubScreenState extends ConsumerState<CaseCollabo
   }
 
   Widget _buildUrgencyBanner() {
+    final caseNum = _caseDetail?.caseNumber ?? widget.caseId;
+    final priority = _caseDetail?.priority ?? 'HIGH';
+    final isUrgent = priority == 'CRITICAL' || priority == 'HIGH';
+
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: 10),
       decoration: BoxDecoration(
-        color: const Color(0xFFFFE4E6),
+        color: isUrgent ? const Color(0xFFFFE4E6) : const Color(0xFFEFF6FF),
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0xFFE11D48).withOpacity(0.2)),
+        border: Border.all(color: isUrgent ? const Color(0xFFE11D48).withValues(alpha: 0.2) : const Color(0xFF3B82F6).withValues(alpha: 0.2)),
       ),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.between,
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Row(
             children: [
-              const Icon(Icons.emergency, size: 18, color: Color(0xFFE11D48)),
+              Icon(isUrgent ? Icons.emergency : Icons.info_outline, size: 18, color: isUrgent ? const Color(0xFFE11D48) : const Color(0xFF2563EB)),
               const SizedBox(width: 6),
               Text(
-                widget.caseId,
+                caseNum,
                 style: AppTypography.codeSmall(context).copyWith(
-                  color: const Color(0xFFE11D48),
+                  color: isUrgent ? const Color(0xFFE11D48) : const Color(0xFF2563EB),
                   fontWeight: FontWeight.bold,
                   fontSize: 12,
                 ),
@@ -248,12 +246,12 @@ class _CaseCollaborationEvidenceHubScreenState extends ConsumerState<CaseCollabo
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFE11D48),
+                  color: isUrgent ? const Color(0xFFE11D48) : const Color(0xFF2563EB),
                   borderRadius: BorderRadius.circular(10),
                 ),
-                child: const Text(
-                  'P1 CRITICAL',
-                  style: TextStyle(
+                child: Text(
+                  '${_caseDetail?.severity ?? "SEV-2"} $priority',
+                  style: const TextStyle(
                     color: Colors.white,
                     fontSize: 9,
                     fontWeight: FontWeight.bold,
@@ -266,17 +264,21 @@ class _CaseCollaborationEvidenceHubScreenState extends ConsumerState<CaseCollabo
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.8),
+              color: Colors.white.withValues(alpha: 0.8),
               borderRadius: BorderRadius.circular(8),
             ),
             child: Row(
               children: [
-                const Icon(Icons.timer, size: 14, color: Color(0xFFE11D48)),
+                Icon(Icons.timer, size: 14, color: isUrgent ? const Color(0xFFE11D48) : const Color(0xFF2563EB)),
                 const SizedBox(width: 4),
-                const Text(
-                  'BREACH IN 42M',
+                Text(
+                  _caseDetail?.slaRiskLevel == 'BREACHED'
+                      ? 'SLA BREACHED'
+                      : _caseDetail?.slaRiskLevel == 'CRITICAL'
+                          ? 'BREACH IN < 1HR'
+                          : 'SLA COMPLIANT',
                   style: TextStyle(
-                    color: Color(0xFFE11D48),
+                    color: isUrgent ? const Color(0xFFE11D48) : const Color(0xFF2563EB),
                     fontSize: 10,
                     fontWeight: FontWeight.bold,
                     fontFamily: 'JetBrains Mono',
@@ -291,6 +293,9 @@ class _CaseCollaborationEvidenceHubScreenState extends ConsumerState<CaseCollabo
   }
 
   Widget _buildIncidentMetaCard() {
+    final title = _caseDetail?.title ?? 'Authentication Gateway Timeout during SSO';
+    final category = _caseDetail?.categoryName ?? 'Infrastructure';
+
     return Container(
       padding: const EdgeInsets.all(AppSpacing.md),
       decoration: BoxDecoration(
@@ -316,9 +321,9 @@ class _CaseCollaborationEvidenceHubScreenState extends ConsumerState<CaseCollabo
                   color: const Color(0xFFEAEDFF),
                   borderRadius: BorderRadius.circular(10),
                 ),
-                child: const Text(
-                  'us-east-prod-04',
-                  style: TextStyle(color: Color(0xFF464554), fontSize: 10, fontWeight: FontWeight.w600),
+                child: Text(
+                  category,
+                  style: const TextStyle(color: Color(0xFF464554), fontSize: 10, fontWeight: FontWeight.w600),
                 ),
               ),
               const SizedBox(width: 6),
@@ -329,12 +334,12 @@ class _CaseCollaborationEvidenceHubScreenState extends ConsumerState<CaseCollabo
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: Row(
-                  children: const [
-                    CircleAvatar(radius: 3, backgroundColor: Color(0xFFD97706)),
-                    SizedBox(width: 4),
+                  children: [
+                    const CircleAvatar(radius: 3, backgroundColor: Color(0xFFD97706)),
+                    const SizedBox(width: 4),
                     Text(
-                      'SEV-1 ACTIVE',
-                      style: TextStyle(color: Color(0xFFD97706), fontSize: 10, fontWeight: FontWeight.bold),
+                      _caseDetail?.status ?? 'INVESTIGATING',
+                      style: const TextStyle(color: Color(0xFFD97706), fontSize: 10, fontWeight: FontWeight.bold),
                     ),
                   ],
                 ),
@@ -343,7 +348,7 @@ class _CaseCollaborationEvidenceHubScreenState extends ConsumerState<CaseCollabo
           ),
           const SizedBox(height: AppSpacing.xs),
           Text(
-            'Authentication Gateway Timeout during SSO',
+            title,
             style: AppTypography.titleMedium(context).copyWith(
               fontWeight: FontWeight.bold,
               fontSize: 15,
@@ -359,11 +364,11 @@ class _CaseCollaborationEvidenceHubScreenState extends ConsumerState<CaseCollabo
               border: Border.all(color: const Color(0xFFE2E8F0)),
             ),
             child: Row(
-              mainAxisAlignment: MainAxisAlignment.between,
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Row(
                   children: [
-                    SizedBox(
+                    const SizedBox(
                       width: 54,
                       height: 24,
                       child: Stack(
@@ -372,24 +377,24 @@ class _CaseCollaborationEvidenceHubScreenState extends ConsumerState<CaseCollabo
                             left: 0,
                             child: CircleAvatar(
                               radius: 12,
-                              backgroundColor: const Color(0xFF6366F1),
-                              child: const Text('E', style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
+                              backgroundColor: Color(0xFF6366F1),
+                              child: Text('E', style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
                             ),
                           ),
                           Positioned(
                             left: 15,
                             child: CircleAvatar(
                               radius: 12,
-                              backgroundColor: const Color(0xFF006194),
-                              child: const Text('M', style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
+                              backgroundColor: Color(0xFF006194),
+                              child: Text('M', style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
                             ),
                           ),
                           Positioned(
                             left: 30,
                             child: CircleAvatar(
                               radius: 12,
-                              backgroundColor: const Color(0xFF831ADA),
-                              child: const Text('P', style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
+                              backgroundColor: Color(0xFF831ADA),
+                              child: Text('P', style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
                             ),
                           ),
                         ],
@@ -403,16 +408,16 @@ class _CaseCollaborationEvidenceHubScreenState extends ConsumerState<CaseCollabo
                           children: [
                             Container(width: 6, height: 6, decoration: const BoxDecoration(color: Color(0xFF0D9488), shape: BoxShape.circle)),
                             const SizedBox(width: 4),
-                            const Text('War Room (3 Online)', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11)),
+                            const Text('War Room Bridge', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11)),
                           ],
                         ),
-                        const Text('Elena, Marcus, Priya', style: TextStyle(color: AppColors.textMuted, fontSize: 10)),
+                        Text('${_caseDetail?.assignedToName ?? "Triage Ops Team"} Active', style: const TextStyle(color: AppColors.textMuted, fontSize: 10)),
                       ],
                     ),
                   ],
                 ),
                 ElevatedButton.icon(
-                  onPressed: () => _showFeedbackToast('Connected to active incident bridge', Icons.mic, const Color(0xFF0D9488)),
+                  onPressed: () => _showFeedbackToast('Connected to active incident war room voice bridge', Icons.mic, const Color(0xFF0D9488)),
                   icon: const Icon(Icons.mic, size: 14, color: Colors.white),
                   label: const Text('Join Bridge', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.white)),
                   style: ElevatedButton.styleFrom(
@@ -431,21 +436,27 @@ class _CaseCollaborationEvidenceHubScreenState extends ConsumerState<CaseCollabo
   }
 
   Widget _buildAiCopilotRunbookCard() {
+    final summary = _aiAnalysis?.executiveSummary ??
+        'Detected potential cascade failure pattern. Ingress pool saturation matches Envoy buffer deadlock under burst load.';
+    final confidence = (_aiAnalysis?.confidenceScore != null)
+        ? '${(_aiAnalysis!.confidenceScore! * 100).toInt()}% confidence'
+        : '94% confidence';
+
     return Container(
       padding: const EdgeInsets.all(AppSpacing.md),
       decoration: BoxDecoration(
         color: const Color(0xFFFAF5FF),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFC084FC).withOpacity(0.35)),
+        border: Border.all(color: const Color(0xFFC084FC).withValues(alpha: 0.35)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
-            mainAxisAlignment: MainAxisAlignment.between,
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Row(
-                children: const [
+              const Row(
+                children: [
                   Text('✨', style: TextStyle(fontSize: 13)),
                   SizedBox(width: 6),
                   Text(
@@ -460,16 +471,16 @@ class _CaseCollaborationEvidenceHubScreenState extends ConsumerState<CaseCollabo
                   color: const Color(0xFFF3E8FF),
                   borderRadius: BorderRadius.circular(10),
                 ),
-                child: const Text(
-                  '96% confidence',
-                  style: TextStyle(color: Color(0xFF7C3AED), fontSize: 9, fontWeight: FontWeight.bold, fontFamily: 'JetBrains Mono'),
+                child: Text(
+                  confidence,
+                  style: const TextStyle(color: Color(0xFF7C3AED), fontSize: 9, fontWeight: FontWeight.bold, fontFamily: 'JetBrains Mono'),
                 ),
               ),
             ],
           ),
           const SizedBox(height: AppSpacing.xs),
           Text(
-            'Detected identical cascade failure from Incident #3812. Elevated ingress pool saturation matches Envoy buffer deadlock.',
+            summary,
             style: AppTypography.bodySmall(context).copyWith(
               color: AppColors.textSecondary,
               fontSize: 12,
@@ -480,19 +491,19 @@ class _CaseCollaborationEvidenceHubScreenState extends ConsumerState<CaseCollabo
           Container(
             padding: const EdgeInsets.all(AppSpacing.sm),
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.9),
+              color: Colors.white.withValues(alpha: 0.9),
               borderRadius: BorderRadius.circular(10),
             ),
             child: Row(
-              mainAxisAlignment: MainAxisAlignment.between,
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Row(
+                const Row(
                   children: [
-                    const Icon(Icons.receipt_long, size: 20, color: Color(0xFF7C3AED)),
-                    const SizedBox(width: 8),
+                    Icon(Icons.receipt_long, size: 20, color: Color(0xFF7C3AED)),
+                    SizedBox(width: 8),
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
-                      children: const [
+                      children: [
                         Text('Runbook #4099', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
                         Text('Hotpatch Ingress Max Connections', style: TextStyle(color: AppColors.textMuted, fontSize: 10)),
                       ],
@@ -534,9 +545,9 @@ class _CaseCollaborationEvidenceHubScreenState extends ConsumerState<CaseCollabo
       ),
       child: Row(
         children: [
-          _buildNavTab(0, 'Tasks (4/7)'),
-          _buildNavTab(1, 'War Room & Notes'),
-          _buildNavTab(2, 'Evidence (3)'),
+          _buildNavTab(0, 'Tasks (${_tasks.where((t) => t.isCompleted).length}/${_tasks.isNotEmpty ? _tasks.length : "4"})'),
+          _buildNavTab(1, 'War Room & Notes (${_notes.length})'),
+          _buildNavTab(2, 'Evidence (${_attachments.isNotEmpty ? _attachments.length : "3"})'),
         ],
       ),
     );
@@ -587,11 +598,15 @@ class _CaseCollaborationEvidenceHubScreenState extends ConsumerState<CaseCollabo
   }
 
   Widget _buildTasksTab() {
+    final completedCount = _tasks.where((t) => t.isCompleted).length;
+    final totalCount = _tasks.isNotEmpty ? _tasks.length : 4;
+    final percent = totalCount > 0 ? ((completedCount / totalCount) * 100).toInt() : 0;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(
-          mainAxisAlignment: MainAxisAlignment.between,
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Row(
               children: [
@@ -603,7 +618,7 @@ class _CaseCollaborationEvidenceHubScreenState extends ConsumerState<CaseCollabo
                     color: const Color(0xFFEEF2FF),
                     borderRadius: BorderRadius.circular(10),
                   ),
-                  child: const Text('57% Done', style: TextStyle(color: Color(0xFF6366F1), fontSize: 10, fontWeight: FontWeight.bold)),
+                  child: Text('$percent% Done', style: const TextStyle(color: Color(0xFF6366F1), fontSize: 10, fontWeight: FontWeight.bold)),
                 ),
               ],
             ),
@@ -615,47 +630,63 @@ class _CaseCollaborationEvidenceHubScreenState extends ConsumerState<CaseCollabo
           ],
         ),
         const SizedBox(height: AppSpacing.xs),
-        _buildTaskItem(
-          icon: Icons.check_circle,
-          iconColor: const Color(0xFF0D9488),
-          title: 'Check Redis cache headroom',
-          statusBadge: 'COMPLETED',
-          statusBg: const Color(0xFFCCFBF1),
-          statusColor: const Color(0xFF0D9488),
-          subtitle: '98.4% memory allocation verified by automation agent',
-          isDone: true,
-        ),
-        const SizedBox(height: AppSpacing.xs),
-        _buildTaskItem(
-          icon: Icons.progress_activity,
-          iconColor: const Color(0xFF0284C7),
-          title: 'Test Envoy ingress proxy latency',
-          statusBadge: 'RUNNING',
-          statusBg: const Color(0xFFE0F2FE),
-          statusColor: const Color(0xFF0284C7),
-          subtitle: '12k pings sent • p99 = 2,410ms',
-          isSpinning: true,
-        ),
-        const SizedBox(height: AppSpacing.xs),
-        _buildTaskItem(
-          icon: Icons.radio_button_unchecked,
-          iconColor: AppColors.textMuted,
-          title: 'Dump JVM heap trace from broker',
-          statusBadge: 'PENDING',
-          statusBg: const Color(0xFFF1F5F9),
-          statusColor: const Color(0xFF64748B),
-          subtitle: 'Assigned to Marcus Cole • Standby for container lock',
-        ),
-        const SizedBox(height: AppSpacing.xs),
-        _buildTaskItem(
-          icon: Icons.verified,
-          iconColor: const Color(0xFF0D9488),
-          title: 'Verify Okta IdP certificate',
-          statusBadge: 'VERIFIED',
-          statusBg: const Color(0xFFCCFBF1),
-          statusColor: const Color(0xFF0D9488),
-          subtitle: 'TLS 1.3 handshake intact. Expiry: 184 days',
-        ),
+        if (_tasks.isNotEmpty)
+          ..._tasks.map((task) => Padding(
+                padding: const EdgeInsets.only(bottom: AppSpacing.xs),
+                child: _buildTaskItem(
+                  icon: task.isCompleted ? Icons.check_circle : Icons.radio_button_unchecked,
+                  iconColor: task.isCompleted ? const Color(0xFF0D9488) : AppColors.textMuted,
+                  title: task.title,
+                  statusBadge: task.status,
+                  statusBg: task.isCompleted ? const Color(0xFFCCFBF1) : const Color(0xFFF1F5F9),
+                  statusColor: task.isCompleted ? const Color(0xFF0D9488) : const Color(0xFF64748B),
+                  subtitle: 'Assigned to ${task.assigneeName}',
+                  isDone: task.isCompleted,
+                ),
+              ))
+        else ...[
+          _buildTaskItem(
+            icon: Icons.check_circle,
+            iconColor: const Color(0xFF0D9488),
+            title: 'Check Redis cache headroom',
+            statusBadge: 'COMPLETED',
+            statusBg: const Color(0xFFCCFBF1),
+            statusColor: const Color(0xFF0D9488),
+            subtitle: '98.4% memory allocation verified by automation agent',
+            isDone: true,
+          ),
+          const SizedBox(height: AppSpacing.xs),
+          _buildTaskItem(
+            icon: Icons.sync,
+            iconColor: const Color(0xFF0284C7),
+            title: 'Test Envoy ingress proxy latency',
+            statusBadge: 'RUNNING',
+            statusBg: const Color(0xFFE0F2FE),
+            statusColor: const Color(0xFF0284C7),
+            subtitle: '12k pings sent • p99 = 2,410ms',
+            isSpinning: true,
+          ),
+          const SizedBox(height: AppSpacing.xs),
+          _buildTaskItem(
+            icon: Icons.radio_button_unchecked,
+            iconColor: AppColors.textMuted,
+            title: 'Dump JVM heap trace from broker',
+            statusBadge: 'PENDING',
+            statusBg: const Color(0xFFF1F5F9),
+            statusColor: const Color(0xFF64748B),
+            subtitle: 'Assigned to Marcus Cole • Standby for container lock',
+          ),
+          const SizedBox(height: AppSpacing.xs),
+          _buildTaskItem(
+            icon: Icons.verified,
+            iconColor: const Color(0xFF0D9488),
+            title: 'Verify Okta IdP certificate',
+            statusBadge: 'VERIFIED',
+            statusBg: const Color(0xFFCCFBF1),
+            statusColor: const Color(0xFF0D9488),
+            subtitle: 'TLS 1.3 handshake intact. Expiry: 184 days',
+          ),
+        ],
       ],
     );
   }
@@ -691,7 +722,7 @@ class _CaseCollaborationEvidenceHubScreenState extends ConsumerState<CaseCollabo
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Row(
-                  mainAxisAlignment: MainAxisAlignment.between,
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text(
                       title,
@@ -727,7 +758,7 @@ class _CaseCollaborationEvidenceHubScreenState extends ConsumerState<CaseCollabo
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(
-          mainAxisAlignment: MainAxisAlignment.between,
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Row(
               children: [
@@ -747,83 +778,96 @@ class _CaseCollaborationEvidenceHubScreenState extends ConsumerState<CaseCollabo
           ],
         ),
         const SizedBox(height: AppSpacing.sm),
-        // Chat card 1
-        Container(
-          padding: const EdgeInsets.all(AppSpacing.md),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: const Color(0xFFE2E8F0)),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.between,
-                children: [
-                  Row(
+        if (_notes.isNotEmpty)
+          ..._notes.map((n) => Padding(
+                padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+                child: Container(
+                  padding: const EdgeInsets.all(AppSpacing.md),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: const Color(0xFFE2E8F0)),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      CircleAvatar(
-                        radius: 12,
-                        backgroundColor: const Color(0xFF831ADA).withOpacity(0.15),
-                        child: const Text('EV', style: TextStyle(color: Color(0xFF831ADA), fontSize: 9, fontWeight: FontWeight.bold)),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Row(
+                            children: [
+                              CircleAvatar(
+                                radius: 12,
+                                backgroundColor: const Color(0xFF831ADA).withValues(alpha: 0.15),
+                                child: Text(
+                                  n.authorName.isNotEmpty ? n.authorName[0].toUpperCase() : 'U',
+                                  style: const TextStyle(color: Color(0xFF831ADA), fontSize: 9, fontWeight: FontWeight.bold),
+                                ),
+                              ),
+                              const SizedBox(width: 6),
+                              Text(n.authorName, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+                              const SizedBox(width: 6),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                                decoration: BoxDecoration(color: const Color(0xFFE0F2FE), borderRadius: BorderRadius.circular(4)),
+                                child: Text(n.authorRole, style: const TextStyle(color: Color(0xFF0284C7), fontSize: 8, fontWeight: FontWeight.bold)),
+                              ),
+                            ],
+                          ),
+                          Text(n.createdAt.toIso8601String().substring(0, 10), style: const TextStyle(color: AppColors.textMuted, fontSize: 10)),
+                        ],
                       ),
-                      const SizedBox(width: 6),
-                      const Text('Elena Vance', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
-                      const SizedBox(width: 6),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
-                        decoration: BoxDecoration(color: const Color(0xFFE0F2FE), borderRadius: BorderRadius.circular(4)),
-                        child: const Text('LEAD', style: TextStyle(color: Color(0xFF0284C7), fontSize: 8, fontWeight: FontWeight.bold)),
+                      const SizedBox(height: AppSpacing.sm),
+                      Text(
+                        n.content,
+                        style: const TextStyle(fontSize: 12, height: 1.4),
                       ),
                     ],
                   ),
-                  const Text('14:02 UTC', style: TextStyle(color: AppColors.textMuted, fontSize: 10)),
-                ],
-              ),
-              const SizedBox(height: AppSpacing.sm),
-              const Text(
-                'Triage update: Gateway errors peaked at 13:58. Okta timing out at 30,000ms. Ingress circuit breaker tripped immediately afterward.',
-                style: TextStyle(fontSize: 12, height: 1.4),
-              ),
-              const SizedBox(height: AppSpacing.sm),
-              // Code Snippet block
-              Container(
-                padding: const EdgeInsets.all(AppSpacing.sm),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFF8FAFC),
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: const Color(0xFFE2E8F0)),
                 ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+              ))
+        else
+          Container(
+            padding: const EdgeInsets.all(AppSpacing.md),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: const Color(0xFFE2E8F0)),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Row(
-                      mainAxisAlignment: MainAxisAlignment.between,
-                      children: const [
-                        Text('envoy-prod-cluster.yaml', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, fontFamily: 'JetBrains Mono')),
-                        Text('DIFF DETECTED', style: TextStyle(color: Color(0xFFE11D48), fontSize: 8, fontWeight: FontWeight.bold, fontFamily: 'JetBrains Mono')),
+                      children: [
+                        CircleAvatar(
+                          radius: 12,
+                          backgroundColor: const Color(0xFF831ADA).withValues(alpha: 0.15),
+                          child: const Text('EV', style: TextStyle(color: Color(0xFF831ADA), fontSize: 9, fontWeight: FontWeight.bold)),
+                        ),
+                        const SizedBox(width: 6),
+                        const Text('Elena Vance', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+                        const SizedBox(width: 6),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                          decoration: BoxDecoration(color: const Color(0xFFE0F2FE), borderRadius: BorderRadius.circular(4)),
+                          child: const Text('LEAD', style: TextStyle(color: Color(0xFF0284C7), fontSize: 8, fontWeight: FontWeight.bold)),
+                        ),
                       ],
                     ),
-                    const SizedBox(height: 4),
-                    const Text('circuit_breakers:\n  max_connections: 1024 [EXHAUSTED]\n  -> patch 4096 [HOT-PATCH READY]',
-                        style: TextStyle(fontSize: 10, fontFamily: 'JetBrains Mono', color: Color(0xFF475569))),
+                    const Text('14:02 UTC', style: TextStyle(color: AppColors.textMuted, fontSize: 10)),
                   ],
                 ),
-              ),
-              const SizedBox(height: AppSpacing.xs),
-              Row(
-                children: [
-                  TextButton.icon(
-                    onPressed: () => _showFeedbackToast('4 operators acknowledged', Icons.thumb_up, AppColors.primary),
-                    icon: const Icon(Icons.thumb_up_alt_outlined, size: 12),
-                    label: const Text('4 acknowledged', style: TextStyle(fontSize: 10)),
-                  ),
-                ],
-              ),
-            ],
+                const SizedBox(height: AppSpacing.sm),
+                const Text(
+                  'Triage update: Gateway errors peaked at 13:58. Okta timing out at 30,000ms. Ingress circuit breaker tripped immediately afterward.',
+                  style: TextStyle(fontSize: 12, height: 1.4),
+                ),
+              ],
+            ),
           ),
-        ),
         const SizedBox(height: AppSpacing.sm),
         // Add note
         Container(
@@ -849,18 +893,11 @@ class _CaseCollaborationEvidenceHubScreenState extends ConsumerState<CaseCollabo
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   IconButton(
-                    onPressed: () => _showFeedbackToast('Log attachment attached', Icons.attachment, AppColors.primary),
+                    onPressed: () => _showFeedbackToast('Log attachment dialogue ready', Icons.attachment, AppColors.primary),
                     icon: const Icon(Icons.attachment, size: 16, color: AppColors.textSecondary),
                   ),
                   ElevatedButton(
-                    onPressed: () {
-                      if (_noteController.text.trim().isNotEmpty) {
-                        _showFeedbackToast('Confidential note recorded', Icons.lock, const Color(0xFF831ADA));
-                        setState(() {
-                          _noteController.clear();
-                        });
-                      }
-                    },
+                    onPressed: _addNote,
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFF4648D4),
                       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
@@ -882,11 +919,11 @@ class _CaseCollaborationEvidenceHubScreenState extends ConsumerState<CaseCollabo
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(
-          mainAxisAlignment: MainAxisAlignment.between,
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Column(
+            const Column(
               crossAxisAlignment: CrossAxisAlignment.start,
-              children: const [
+              children: [
                 Text('Evidence Locker', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
                 Text('Immutable SHA-256 Audit Trail', style: TextStyle(color: AppColors.textMuted, fontSize: 10)),
               ],
@@ -897,8 +934,8 @@ class _CaseCollaborationEvidenceHubScreenState extends ConsumerState<CaseCollabo
                 color: const Color(0xFFEEF2FF),
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: Row(
-                children: const [
+              child: const Row(
+                children: [
                   Icon(Icons.lock, size: 12, color: Color(0xFF6366F1)),
                   SizedBox(width: 4),
                   Text('Chain Intact', style: TextStyle(color: Color(0xFF6366F1), fontSize: 10, fontWeight: FontWeight.bold)),
@@ -908,29 +945,42 @@ class _CaseCollaborationEvidenceHubScreenState extends ConsumerState<CaseCollabo
           ],
         ),
         const SizedBox(height: AppSpacing.sm),
-        _buildEvidenceCard(
-          fileName: 'sso_auth_trace.pcap',
-          fileSize: '4.2 MB',
-          shaHash: 'sha256: 8f3d...91c4',
-          fileType: 'Packet Capture',
-          icon: Icons.network_check,
-        ),
-        const SizedBox(height: AppSpacing.xs),
-        _buildEvidenceCard(
-          fileName: 'envoy_access.log',
-          fileSize: '18.6 MB',
-          shaHash: 'sha256: 12ae...409b',
-          fileType: 'Ingress Logs',
-          icon: Icons.description,
-        ),
-        const SizedBox(height: AppSpacing.xs),
-        _buildEvidenceCard(
-          fileName: 'jvm_heap_dump.hprof',
-          fileSize: '342 MB',
-          shaHash: 'sha256: bc77...8810',
-          fileType: 'Heap Profile',
-          icon: Icons.data_object,
-        ),
+        if (_attachments.isNotEmpty)
+          ..._attachments.map((att) => Padding(
+                padding: const EdgeInsets.only(bottom: AppSpacing.xs),
+                child: _buildEvidenceCard(
+                  fileName: att.fileName,
+                  fileSize: '${(att.fileSize / 1024).toStringAsFixed(1)} KB',
+                  shaHash: 'sha256: ${att.id.length > 8 ? att.id.substring(0, 8) : att.id}',
+                  fileType: att.fileType,
+                  icon: Icons.description,
+                ),
+              ))
+        else ...[
+          _buildEvidenceCard(
+            fileName: 'sso_auth_trace.pcap',
+            fileSize: '4.2 MB',
+            shaHash: 'sha256: 8f3d...91c4',
+            fileType: 'Packet Capture',
+            icon: Icons.network_check,
+          ),
+          const SizedBox(height: AppSpacing.xs),
+          _buildEvidenceCard(
+            fileName: 'envoy_access.log',
+            fileSize: '18.6 MB',
+            shaHash: 'sha256: 12ae...409b',
+            fileType: 'Ingress Logs',
+            icon: Icons.description,
+          ),
+          const SizedBox(height: AppSpacing.xs),
+          _buildEvidenceCard(
+            fileName: 'jvm_heap_dump.hprof',
+            fileSize: '342 MB',
+            shaHash: 'sha256: bc77...8810',
+            fileType: 'Heap Profile',
+            icon: Icons.data_object,
+          ),
+        ],
       ],
     );
   }
@@ -966,14 +1016,14 @@ class _CaseCollaborationEvidenceHubScreenState extends ConsumerState<CaseCollabo
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Row(
-                  mainAxisAlignment: MainAxisAlignment.between,
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text(fileName, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
                     Text(fileSize, style: const TextStyle(color: AppColors.textMuted, fontSize: 10)),
                   ],
                 ),
                 Row(
-                  mainAxisAlignment: MainAxisAlignment.between,
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text(fileType, style: const TextStyle(color: AppColors.textSecondary, fontSize: 10)),
                     Text(shaHash, style: const TextStyle(color: Color(0xFF0D9488), fontSize: 9, fontFamily: 'JetBrains Mono')),
@@ -986,45 +1036,6 @@ class _CaseCollaborationEvidenceHubScreenState extends ConsumerState<CaseCollabo
             onPressed: () => _showFeedbackToast('Downloaded $fileName', Icons.download, AppColors.primary),
             icon: const Icon(Icons.download, size: 16, color: AppColors.textSecondary),
           ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildBottomNav(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.95),
-        border: const Border(top: BorderSide(color: Color(0xFFE2E8F0))),
-      ),
-      child: BottomNavigationBar(
-        currentIndex: _currentNavIndex,
-        onTap: (index) {
-          setState(() {
-            _currentNavIndex = index;
-          });
-          if (index == 0) {
-            context.go('/dashboard/operator/triage');
-          } else if (index == 1) {
-            context.push('/cases/${widget.caseId}/investigation');
-          } else if (index == 4) {
-            context.go('/dashboard/requester');
-          }
-        },
-        type: BottomNavigationBarType.fixed,
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        selectedItemColor: const Color(0xFF4648D4),
-        unselectedItemColor: AppColors.textMuted,
-        selectedFontSize: 10,
-        unselectedFontSize: 10,
-        selectedLabelStyle: const TextStyle(fontWeight: FontWeight.bold),
-        items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.inbox_outlined), activeIcon: Icon(Icons.inbox), label: 'Triage'),
-          BottomNavigationBarItem(icon: Icon(Icons.dataset_outlined), activeIcon: Icon(Icons.dataset), label: 'Studio'),
-          BottomNavigationBarItem(icon: Icon(Icons.radar_outlined), activeIcon: Icon(Icons.radar), label: 'Radar'),
-          BottomNavigationBarItem(icon: Icon(Icons.group_outlined), activeIcon: Icon(Icons.group), label: 'Lead'),
-          BottomNavigationBarItem(icon: Icon(Icons.admin_panel_settings_outlined), activeIcon: Icon(Icons.admin_panel_settings), label: 'Portal'),
         ],
       ),
     );

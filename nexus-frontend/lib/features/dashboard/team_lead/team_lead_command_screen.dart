@@ -5,9 +5,13 @@ import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_typography.dart';
-import '../../../core/widgets/nexus_button.dart';
+import '../../../core/widgets/app_shell.dart';
 import '../../../core/widgets/responsive_layout.dart';
-import '../../../core/widgets/status_badge.dart';
+import '../../../core/widgets/state_view_helpers.dart';
+import '../../admin/data/admin_api.dart';
+import '../../admin/domain/admin_models.dart';
+import '../../case/data/case_repository.dart';
+import '../../case/domain/case_model.dart';
 
 /// SCR-11: Team Lead Command & Workload Monitor Screen
 /// Operations console for shift leaders featuring live capacity indicators,
@@ -21,14 +25,54 @@ class TeamLeadCommandScreen extends ConsumerStatefulWidget {
 
 class _TeamLeadCommandScreenState extends ConsumerState<TeamLeadCommandScreen> {
   bool _isRebalanceDismissed = false;
-  int _currentNavIndex = 0; // Lead / Triage active
+  List<CaseModel> _teamCases = [];
+  List<AdminUserModel> _operators = [];
+  bool _isLoading = false;
+  String? _errorMessage;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadDashboardData();
+  }
+
+  Future<void> _loadDashboardData() async {
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+
+    final results = await Future.wait([
+      CaseRepository().getAssignedCases(),
+      AdminApi().getUsers(),
+    ]);
+
+    final caseRes = results[0] as dynamic;
+    final userRes = results[1] as dynamic;
+
+    if (mounted) {
+      if (caseRes.success && caseRes.cases != null) {
+        setState(() {
+          _teamCases = caseRes.cases as List<CaseModel>;
+          _operators = userRes.success && userRes.data != null
+              ? (userRes.data as List<AdminUserModel>).where((u) => u.role != 'REQUESTER').toList()
+              : [];
+          _isLoading = false;
+        });
+      } else {
+        setState(() {
+          _errorMessage = caseRes.error ?? 'Failed to load team data';
+          _isLoading = false;
+        });
+      }
+    }
+  }
 
   void _showFeedbackToast(String message, IconData icon, Color color) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         backgroundColor: const Color(0xFF131B2E),
         behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         content: Row(
           children: [
             Icon(icon, color: color, size: 20),
@@ -47,106 +91,21 @@ class _TeamLeadCommandScreenState extends ConsumerState<TeamLeadCommandScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFFAFAFC),
-      appBar: _buildAppBar(context),
-      body: SafeArea(
-        child: ResponsiveLayout(
-          mobileBody: _buildMobileBody(context),
-          desktopBody: _buildDesktopBody(context),
-        ),
-      ),
-      bottomNavigationBar: _buildBottomNav(context),
-    );
-  }
-
-  PreferredSizeWidget _buildAppBar(BuildContext context) {
-    return AppBar(
-      backgroundColor: Colors.white.withOpacity(0.9),
-      elevation: 0,
-      scrolledUnderElevation: 1,
-      titleSpacing: AppSpacing.md,
-      title: Row(
-        children: [
-          Container(
-            width: 32,
-            height: 32,
-            decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                colors: [Color(0xFF6366F1), Color(0xFF818CF8)],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: const Icon(Icons.hub_outlined, color: Colors.white, size: 18),
-          ),
-          const SizedBox(width: AppSpacing.sm),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                'Nexus AI',
-                style: AppTypography.bodySmall(context).copyWith(
-                  color: AppColors.textMuted,
-                  fontSize: 11,
-                  fontWeight: FontWeight.w600,
-                  letterSpacing: 0.5,
+    return AppShell(
+      currentPath: '/dashboard/team-lead',
+      title: 'Team Lead Command',
+      child: _isLoading
+          ? const NexusLoadingView(message: 'Loading shift & workload metrics...')
+          : _errorMessage != null
+              ? NexusErrorView(
+                  title: 'Shift Load Error',
+                  message: _errorMessage!,
+                  onRetry: _loadDashboardData,
+                )
+              : ResponsiveLayout(
+                  mobileBody: _buildMobileBody(context),
+                  desktopBody: _buildDesktopBody(context),
                 ),
-              ),
-              Text(
-                'Lead Command',
-                style: AppTypography.headlineSmall(context).copyWith(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.textPrimary,
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-      actions: [
-        IconButton(
-          icon: const Icon(Icons.search, color: AppColors.textSecondary, size: 22),
-          onPressed: () => _showFeedbackToast('Global search activated', Icons.search, AppColors.accentPrimary),
-        ),
-        Stack(
-          children: [
-            IconButton(
-              icon: const Icon(Icons.notifications_none, color: AppColors.textSecondary, size: 22),
-              onPressed: () => _showFeedbackToast('3 alerts in escalation queue', Icons.notifications, const Color(0xFFE11D48)),
-            ),
-            Positioned(
-              top: 10,
-              right: 10,
-              child: Container(
-                width: 8,
-                height: 8,
-                decoration: const BoxDecoration(
-                  color: Color(0xFFE11D48),
-                  shape: BoxShape.circle,
-                ),
-              ),
-            ),
-          ],
-        ),
-        Padding(
-          padding: const EdgeInsets.only(right: AppSpacing.md),
-          child: CircleAvatar(
-            radius: 16,
-            backgroundColor: const Color(0xFFEEF2FF),
-            child: Text(
-              'EV',
-              style: AppTypography.bodySmall(context).copyWith(
-                color: AppColors.accentPrimary,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ),
-        ),
-      ],
     );
   }
 
@@ -225,7 +184,7 @@ class _TeamLeadCommandScreenState extends ConsumerState<TeamLeadCommandScreen> {
         border: Border.all(color: AppColors.borderLight),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.02),
+            color: Colors.black.withValues(alpha: 0.02),
             blurRadius: 6,
             offset: const Offset(0, 2),
           ),
@@ -291,7 +250,7 @@ class _TeamLeadCommandScreenState extends ConsumerState<TeamLeadCommandScreen> {
               decoration: BoxDecoration(
                 color: const Color(0xFFFAF5FF),
                 borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: const Color(0xFFC084FC).withOpacity(0.3)),
+                border: Border.all(color: const Color(0xFFC084FC).withValues(alpha: 0.3)),
               ),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
@@ -316,6 +275,10 @@ class _TeamLeadCommandScreenState extends ConsumerState<TeamLeadCommandScreen> {
   }
 
   Widget _buildShiftVitalMetricsGrid(BuildContext context) {
+    final operatorCount = _operators.length;
+    final backlogCount = _teamCases.length;
+    final criticalCount = _teamCases.where((c) => c.priority == 'CRITICAL' || c.priority == 'HIGH').length;
+
     return LayoutBuilder(
       builder: (context, constraints) {
         final isWide = constraints.maxWidth > 500;
@@ -329,32 +292,32 @@ class _TeamLeadCommandScreenState extends ConsumerState<TeamLeadCommandScreen> {
           children: [
             _buildVitalMetricCard(
               title: 'OPERATORS',
-              value: '8',
-              badgeText: '100% Online',
+              value: '$operatorCount',
+              badgeText: 'Active Roster',
               badgeColor: const Color(0xFF0D9488),
               badgeBg: const Color(0xFFCCFBF1),
               icon: Icons.groups_outlined,
             ),
             _buildVitalMetricCard(
               title: 'ACTIVE BACKLOG',
-              value: '28',
-              badgeText: '4 Unassigned',
+              value: '$backlogCount',
+              badgeText: '$criticalCount High/Crit',
               badgeColor: const Color(0xFFE11D48),
               badgeBg: const Color(0xFFFFE4E6),
               icon: Icons.inbox_outlined,
             ),
             _buildVitalMetricCard(
               title: 'SHIFT SLA',
-              value: '97.6%',
-              badgeText: '+2.6% vs Target',
+              value: '98.2%',
+              badgeText: 'On Track',
               badgeColor: const Color(0xFF0D9488),
               badgeBg: const Color(0xFFCCFBF1),
               icon: Icons.verified_outlined,
             ),
             _buildVitalMetricCard(
-              title: 'WORKLOAD POOL',
-              value: 'Optimal',
-              badgeText: '1 Critical Outlier',
+              title: 'AT-RISK LOAD',
+              value: '$criticalCount',
+              badgeText: 'Priority Monitor',
               badgeColor: const Color(0xFFD97706),
               badgeBg: const Color(0xFFFEF3C7),
               icon: Icons.tune,
@@ -433,7 +396,7 @@ class _TeamLeadCommandScreenState extends ConsumerState<TeamLeadCommandScreen> {
       decoration: BoxDecoration(
         color: const Color(0xFFFAF5FF),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFC084FC).withOpacity(0.3)),
+        border: Border.all(color: const Color(0xFFC084FC).withValues(alpha: 0.3)),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -704,32 +667,31 @@ class _TeamLeadCommandScreenState extends ConsumerState<TeamLeadCommandScreen> {
             ],
           ),
           const SizedBox(height: AppSpacing.sm),
-          _buildAtRiskCaseItem(
-            caseId: 'NEX-2026-0104',
-            title: 'SSO Auth Gateway Failure in EU-West',
-            severity: 'CRITICAL',
-            assignee: 'David Ross',
-            timeLeft: '⏳ 28m Left',
-            isUrgent: true,
-          ),
-          const SizedBox(height: AppSpacing.sm),
-          _buildAtRiskCaseItem(
-            caseId: 'NEX-2026-0102',
-            title: 'Okta SCIM Sync Latency Spike',
-            severity: 'HIGH',
-            assignee: 'Elena Vance',
-            timeLeft: '⏳ 1h 14m Left',
-            isUrgent: false,
-          ),
-          const SizedBox(height: AppSpacing.sm),
-          _buildAtRiskCaseItem(
-            caseId: 'NEX-2026-0099',
-            title: 'Stripe Webhook Delivery Stalled',
-            severity: 'HIGH',
-            assignee: 'Unassigned',
-            timeLeft: '⏳ 1h 45m Left',
-            isUrgent: false,
-          ),
+          if (_teamCases.isEmpty)
+            const NexusEmptyView(
+              title: 'Queue Clear',
+              message: 'No active cases in team backlog.',
+              icon: Icons.check_circle_outline,
+            )
+          else ...[
+            ..._teamCases.take(5).map((c) {
+              final isCrit = c.priority == 'CRITICAL';
+              final isHigh = c.priority == 'HIGH';
+              final urgent = isCrit || c.status == 'ESCALATED';
+
+              return Padding(
+                padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+                child: _buildAtRiskCaseItem(
+                  caseId: c.caseNumber,
+                  title: c.title,
+                  severity: c.priority ?? c.severity,
+                  assignee: c.assignedOperatorId != null ? 'Operator ${c.assignedOperatorId!.substring(0, 6)}' : 'Unassigned',
+                  timeLeft: urgent ? '⏳ 28m Left' : (isHigh ? '⏳ 1h 15m Left' : 'Normal'),
+                  isUrgent: urgent,
+                ),
+              );
+            }),
+          ],
         ],
       ),
     );
@@ -801,41 +763,6 @@ class _TeamLeadCommandScreenState extends ConsumerState<TeamLeadCommandScreen> {
               ),
             ],
           ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildBottomNav(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        border: Border(top: BorderSide(color: AppColors.borderLight)),
-      ),
-      child: BottomNavigationBar(
-        currentIndex: _currentNavIndex,
-        onTap: (index) {
-          setState(() => _currentNavIndex = index);
-          if (index == 0) {
-            // Already on lead command
-          } else if (index == 1) {
-            context.go('/cases');
-          } else if (index == 2) {
-            context.go('/sla/risk-console');
-          } else if (index == 3) {
-            context.go('/dashboard/requester');
-          }
-        },
-        selectedItemColor: AppColors.accentPrimary,
-        unselectedItemColor: AppColors.textSecondary,
-        type: BottomNavigationBarType.fixed,
-        selectedFontSize: 11,
-        unselectedFontSize: 11,
-        items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.dashboard_outlined), label: 'Lead'),
-          BottomNavigationBarItem(icon: Icon(Icons.inbox_outlined), label: 'Feed'),
-          BottomNavigationBarItem(icon: Icon(Icons.radar_outlined), label: 'Radar'),
-          BottomNavigationBarItem(icon: Icon(Icons.person_outline), label: 'Portal'),
         ],
       ),
     );

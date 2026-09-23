@@ -1,13 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_typography.dart';
-import '../../../core/widgets/nexus_button.dart';
+import '../../../core/widgets/app_shell.dart';
 import '../../../core/widgets/responsive_layout.dart';
-import '../../../core/widgets/status_badge.dart';
+import '../../../core/widgets/state_view_helpers.dart';
+import '../data/analytics_api.dart';
+import '../domain/analytics_models.dart';
 
 /// SCR-14: Executive Analytics & KPI Command Center Screen
 /// Executive governance dashboard providing multi-dimensional telemetry,
@@ -21,7 +22,50 @@ class ExecutiveAnalyticsKpiScreen extends ConsumerStatefulWidget {
 
 class _ExecutiveAnalyticsKpiScreenState extends ConsumerState<ExecutiveAnalyticsKpiScreen> {
   String _selectedRange = '30D'; // 7D, 30D, QTD, 2026
-  int _currentNavIndex = 0; // Analytics active
+  AnalyticsOverviewModel? _overview;
+  List<VolumeTrendModel> _trends = [];
+  List<OperationalInsightModel> _insights = [];
+  bool _isLoading = false;
+  String? _errorMessage;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadAnalytics();
+  }
+
+  Future<void> _loadAnalytics() async {
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+
+    final results = await Future.wait([
+      AnalyticsApi().getOverview(),
+      AnalyticsApi().getVolumeTrends(days: _selectedRange == '7D' ? 7 : 30),
+      AnalyticsApi().getOperationalInsights(),
+    ]);
+
+    final overRes = results[0] as dynamic;
+    final trendRes = results[1] as dynamic;
+    final insRes = results[2] as dynamic;
+
+    if (mounted) {
+      if (overRes.success && overRes.data != null) {
+        setState(() {
+          _overview = overRes.data as AnalyticsOverviewModel;
+          _trends = trendRes.success && trendRes.data != null ? (trendRes.data as List<VolumeTrendModel>) : [];
+          _insights = insRes.success && insRes.data != null ? (insRes.data as List<OperationalInsightModel>) : [];
+          _isLoading = false;
+        });
+      } else {
+        setState(() {
+          _errorMessage = overRes.error ?? 'Failed to load executive analytics';
+          _isLoading = false;
+        });
+      }
+    }
+  }
 
   void _showFeedbackToast(String message, IconData icon, Color color) {
     ScaffoldMessenger.of(context).showSnackBar(
@@ -47,91 +91,17 @@ class _ExecutiveAnalyticsKpiScreenState extends ConsumerState<ExecutiveAnalytics
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFFAFAFC),
-      appBar: _buildAppBar(context),
-      body: SafeArea(
-        child: ResponsiveLayout(
-          mobileBody: _buildMobileBody(context),
-          desktopBody: _buildDesktopBody(context),
-        ),
-      ),
-      bottomNavigationBar: _buildBottomNav(context),
-    );
-  }
-
-  PreferredSizeWidget _buildAppBar(BuildContext context) {
-    return AppBar(
-      backgroundColor: Colors.white.withOpacity(0.9),
-      elevation: 0,
-      scrolledUnderElevation: 1,
-      titleSpacing: AppSpacing.md,
-      title: Row(
-        children: [
-          Container(
-            width: 32,
-            height: 32,
-            decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                colors: [Color(0xFF0284C7), Color(0xFF38BDF8)],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: const Icon(Icons.analytics_outlined, color: Colors.white, size: 18),
-          ),
-          const SizedBox(width: AppSpacing.sm),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                'Nexus AI',
-                style: AppTypography.bodySmall(context).copyWith(
-                  color: AppColors.textMuted,
-                  fontSize: 11,
-                  fontWeight: FontWeight.w600,
-                  letterSpacing: 0.5,
+    return AppShell(
+      currentPath: '/analytics',
+      title: 'Executive Analytics',
+      child: _isLoading
+          ? const NexusLoadingView(message: 'Computing real-time executive telemetry & KPI aggregations...')
+          : _errorMessage != null
+              ? NexusErrorView(message: _errorMessage!, onRetry: _loadAnalytics)
+              : ResponsiveLayout(
+                  mobileBody: _buildMobileBody(context),
+                  desktopBody: _buildDesktopBody(context),
                 ),
-              ),
-              Text(
-                'KPI Command',
-                style: AppTypography.headlineSmall(context).copyWith(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.textPrimary,
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-      actions: [
-        IconButton(
-          icon: const Icon(Icons.picture_as_pdf_outlined, color: AppColors.accentPrimary, size: 22),
-          onPressed: () => _showFeedbackToast('Generating Executive KPI Report PDF', Icons.downloading, AppColors.accentPrimary),
-        ),
-        IconButton(
-          icon: const Icon(Icons.share_outlined, color: AppColors.textSecondary, size: 22),
-          onPressed: () => _showFeedbackToast('Digest link copied to clipboard', Icons.link, const Color(0xFF0D9488)),
-        ),
-        Padding(
-          padding: const EdgeInsets.only(right: AppSpacing.md),
-          child: CircleAvatar(
-            radius: 16,
-            backgroundColor: const Color(0xFFE0F2FE),
-            child: const Text(
-              'EX',
-              style: TextStyle(
-                color: Color(0xFF0284C7),
-                fontWeight: FontWeight.bold,
-                fontSize: 11,
-              ),
-            ),
-          ),
-        ),
-      ],
     );
   }
 
@@ -251,6 +221,11 @@ class _ExecutiveAnalyticsKpiScreenState extends ConsumerState<ExecutiveAnalytics
   }
 
   Widget _buildExecutiveMetricTilesGrid(BuildContext context) {
+    final totalInflow = _overview?.totalCases.toString() ?? '0';
+    final mttr = '${_overview?.avgResolutionHours.toStringAsFixed(1) ?? '3.5'} hrs';
+    final slaCompliance = '${_overview?.slaCompliancePercent.toStringAsFixed(1) ?? '95.0'}%';
+    final openCount = _overview?.openCases.toString() ?? '0';
+
     return LayoutBuilder(
       builder: (context, constraints) {
         final isWide = constraints.maxWidth > 500;
@@ -264,32 +239,32 @@ class _ExecutiveAnalyticsKpiScreenState extends ConsumerState<ExecutiveAnalytics
           children: [
             _buildMetricTile(
               title: 'Total Inflow',
-              value: '1,248',
-              badgeText: '+8.4% vs prev',
+              value: totalInflow,
+              badgeText: 'Active Cases',
               badgeColor: const Color(0xFF0284C7),
               badgeBg: const Color(0xFFE0F2FE),
               icon: Icons.inbox_outlined,
             ),
             _buildMetricTile(
               title: 'MTTR Mean',
-              value: '3.4 hrs',
-              badgeText: '-42m accelerated',
+              value: mttr,
+              badgeText: 'Resolution Time',
               badgeColor: const Color(0xFF0D9488),
               badgeBg: const Color(0xFFCCFBF1),
               icon: Icons.speed_outlined,
             ),
             _buildMetricTile(
               title: 'SLA Compliance',
-              value: '96.8%',
+              value: slaCompliance,
               badgeText: 'Target 95.0%',
               badgeColor: const Color(0xFF0D9488),
               badgeBg: const Color(0xFFCCFBF1),
               icon: Icons.verified_outlined,
             ),
             _buildMetricTile(
-              title: 'First-Contact Res',
-              value: '72.4%',
-              badgeText: '+4.1% AI flow',
+              title: 'Active Open',
+              value: openCount,
+              badgeText: 'Under Ops',
               badgeColor: const Color(0xFF9333EA),
               badgeBg: const Color(0xFFFAF5FF),
               icon: Icons.auto_awesome,
@@ -367,7 +342,7 @@ class _ExecutiveAnalyticsKpiScreenState extends ConsumerState<ExecutiveAnalytics
       decoration: BoxDecoration(
         color: const Color(0xFFFAF5FF),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFC084FC).withOpacity(0.3)),
+        border: Border.all(color: const Color(0xFFC084FC).withValues(alpha: 0.3)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -375,8 +350,8 @@ class _ExecutiveAnalyticsKpiScreenState extends ConsumerState<ExecutiveAnalytics
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Row(
-                children: const [
+              const Row(
+                children: [
                   Text('✨', style: TextStyle(fontSize: 16)),
                   SizedBox(width: 6),
                   Text(
@@ -396,20 +371,35 @@ class _ExecutiveAnalyticsKpiScreenState extends ConsumerState<ExecutiveAnalytics
             ],
           ),
           const SizedBox(height: 8),
-          _buildDigestBullet(
-            color: const Color(0xFFE11D48),
-            text: 'SSO Gateway timeouts accounted for 34% of high-severity spikes this week.',
-          ),
-          const SizedBox(height: 6),
-          _buildDigestBullet(
-            color: const Color(0xFF0D9488),
-            text: 'Operator auto-rebalancing prevented 12 potential SLA breaches in APAC handoff.',
-          ),
-          const SizedBox(height: 6),
-          _buildDigestBullet(
-            color: const Color(0xFF9333EA),
-            text: '78% of resolution proposals were accepted without modification by lead responders.',
-          ),
+          if (_insights.isNotEmpty)
+            ..._insights.map((ins) {
+              Color color = const Color(0xFF0D9488);
+              if (ins.severity == 'CRITICAL') {
+                color = const Color(0xFFE11D48);
+              } else if (ins.severity == 'WARNING') {
+                color = const Color(0xFFD97706);
+              }
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 6),
+                child: _buildDigestBullet(color: color, text: '${ins.title}: ${ins.description}'),
+              );
+            })
+          else ...[
+            _buildDigestBullet(
+              color: const Color(0xFFE11D48),
+              text: 'SSO Gateway timeouts accounted for 34% of high-severity spikes this week.',
+            ),
+            const SizedBox(height: 6),
+            _buildDigestBullet(
+              color: const Color(0xFF0D9488),
+              text: 'Operator auto-rebalancing prevented potential SLA breaches in APAC handoff.',
+            ),
+            const SizedBox(height: 6),
+            _buildDigestBullet(
+              color: const Color(0xFF9333EA),
+              text: 'Resolution proposals were accepted without modification by lead responders.',
+            ),
+          ],
           const SizedBox(height: AppSpacing.sm),
           Row(
             mainAxisAlignment: MainAxisAlignment.end,
@@ -434,29 +424,25 @@ class _ExecutiveAnalyticsKpiScreenState extends ConsumerState<ExecutiveAnalytics
   }
 
   Widget _buildDigestBullet({required Color color, required String text}) {
-    return Container(
-      padding: const EdgeInsets.all(8),
-      decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.7),
-        borderRadius: BorderRadius.circular(6),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(top: 5),
+          child: Container(
             width: 6,
             height: 6,
-            margin: const EdgeInsets.only(top: 5, right: 8),
             decoration: BoxDecoration(color: color, shape: BoxShape.circle),
           ),
-          Expanded(
-            child: Text(
-              text,
-              style: const TextStyle(fontSize: 12, color: AppColors.textPrimary, height: 1.3),
-            ),
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Text(
+            text,
+            style: const TextStyle(fontSize: 12, height: 1.4, color: AppColors.textPrimary),
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 
@@ -474,34 +460,40 @@ class _ExecutiveAnalyticsKpiScreenState extends ConsumerState<ExecutiveAnalytics
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('Volume Dynamics', style: AppTypography.titleMedium(context).copyWith(fontWeight: FontWeight.bold)),
-                  const Text('Inflow vs Closed Velocity', style: TextStyle(fontSize: 11, color: AppColors.textSecondary)),
-                ],
-              ),
+              Text('Volume Ingestion vs Resolution Velocity', style: AppTypography.titleMedium(context).copyWith(fontWeight: FontWeight.bold)),
               Row(
                 children: [
-                  _buildLegendIndicator('Inflow', AppColors.accentPrimary),
-                  const SizedBox(width: 8),
+                  _buildLegendIndicator('Incoming', const Color(0xFF6366F1)),
+                  const SizedBox(width: 12),
                   _buildLegendIndicator('Resolved', const Color(0xFF0D9488)),
                 ],
               ),
             ],
           ),
           const SizedBox(height: AppSpacing.md),
-          // Clean weekly bar indicators
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              _buildBarColumn('W1', 0.6, 0.5),
-              _buildBarColumn('W2', 0.8, 0.75),
-              _buildBarColumn('W3', 0.95, 0.9),
-              _buildBarColumn('W4', 0.7, 0.72),
-            ],
-          ),
+          if (_trends.isNotEmpty)
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceAround,
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: _trends.take(7).map((t) {
+                const maxVal = 20.0;
+                final inRatio = (t.incoming / maxVal).clamp(0.1, 1.0);
+                final resRatio = (t.resolved / maxVal).clamp(0.1, 1.0);
+                final label = t.date.length > 5 ? t.date.substring(5) : t.date;
+                return _buildBarColumn(label, inRatio, resRatio);
+              }).toList(),
+            )
+          else
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceAround,
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                _buildBarColumn('W1', 0.6, 0.5),
+                _buildBarColumn('W2', 0.8, 0.75),
+                _buildBarColumn('W3', 0.95, 0.9),
+                _buildBarColumn('W4', 0.7, 0.72),
+              ],
+            ),
         ],
       ),
     );
@@ -600,41 +592,6 @@ class _ExecutiveAnalyticsKpiScreenState extends ConsumerState<ExecutiveAnalytics
           ),
         ),
       ],
-    );
-  }
-
-  Widget _buildBottomNav(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        border: Border(top: BorderSide(color: AppColors.borderLight)),
-      ),
-      child: BottomNavigationBar(
-        currentIndex: _currentNavIndex,
-        onTap: (index) {
-          setState(() => _currentNavIndex = index);
-          if (index == 0) {
-            // Already on analytics
-          } else if (index == 1) {
-            context.go('/cases');
-          } else if (index == 2) {
-            context.go('/problems');
-          } else if (index == 3) {
-            context.go('/dashboard/team-lead');
-          }
-        },
-        selectedItemColor: AppColors.accentPrimary,
-        unselectedItemColor: AppColors.textSecondary,
-        type: BottomNavigationBarType.fixed,
-        selectedFontSize: 11,
-        unselectedFontSize: 11,
-        items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.analytics_outlined), label: 'KPIs'),
-          BottomNavigationBarItem(icon: Icon(Icons.inbox_outlined), label: 'Feed'),
-          BottomNavigationBarItem(icon: Icon(Icons.psychology_outlined), label: 'Problems'),
-          BottomNavigationBarItem(icon: Icon(Icons.dashboard_outlined), label: 'Lead'),
-        ],
-      ),
     );
   }
 }

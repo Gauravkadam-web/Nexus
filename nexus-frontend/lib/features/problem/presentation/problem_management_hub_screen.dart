@@ -1,13 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_typography.dart';
-import '../../../core/widgets/nexus_button.dart';
+import '../../../core/widgets/app_shell.dart';
 import '../../../core/widgets/responsive_layout.dart';
-import '../../../core/widgets/status_badge.dart';
+import '../../../core/widgets/state_view_helpers.dart';
+import '../data/problem_api.dart';
+import '../domain/problem_model.dart';
 
 /// SCR-13: Problem Management & Root Cause Hub Screen
 /// ITIL v4 KEDB knowledge engine featuring autonomous AI vector anomaly clustering,
@@ -21,7 +22,46 @@ class ProblemManagementHubScreen extends ConsumerStatefulWidget {
 
 class _ProblemManagementHubScreenState extends ConsumerState<ProblemManagementHubScreen> {
   final TextEditingController _searchController = TextEditingController();
-  int _currentNavIndex = 3; // Problems / Admin tab
+  List<ProblemModel> _problems = [];
+  List<RecurringPatternModel> _patterns = [];
+  bool _isLoading = false;
+  String? _errorMessage;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadData();
+  }
+
+  Future<void> _loadData() async {
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+
+    final results = await Future.wait([
+      ProblemApi().getProblems(),
+      ProblemApi().getRecurringPatterns(),
+    ]);
+
+    final probRes = results[0] as dynamic;
+    final patRes = results[1] as dynamic;
+
+    if (mounted) {
+      if (probRes.success && probRes.data != null) {
+        setState(() {
+          _problems = probRes.data as List<ProblemModel>;
+          _patterns = patRes.success && patRes.data != null ? (patRes.data as List<RecurringPatternModel>) : [];
+          _isLoading = false;
+        });
+      } else {
+        setState(() {
+          _errorMessage = probRes.error ?? 'Failed to load problem management data';
+          _isLoading = false;
+        });
+      }
+    }
+  }
 
   @override
   void dispose() {
@@ -53,91 +93,13 @@ class _ProblemManagementHubScreenState extends ConsumerState<ProblemManagementHu
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFFAFAFC),
-      appBar: _buildAppBar(context),
-      body: SafeArea(
-        child: ResponsiveLayout(
-          mobileBody: _buildMobileBody(context),
-          desktopBody: _buildDesktopBody(context),
-        ),
+    return AppShell(
+      currentPath: '/problems',
+      title: 'Problem Management Hub',
+      child: ResponsiveLayout(
+        mobileBody: _buildMobileBody(context),
+        desktopBody: _buildDesktopBody(context),
       ),
-      bottomNavigationBar: _buildBottomNav(context),
-    );
-  }
-
-  PreferredSizeWidget _buildAppBar(BuildContext context) {
-    return AppBar(
-      backgroundColor: Colors.white.withOpacity(0.9),
-      elevation: 0,
-      scrolledUnderElevation: 1,
-      titleSpacing: AppSpacing.md,
-      title: Row(
-        children: [
-          Container(
-            width: 32,
-            height: 32,
-            decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                colors: [Color(0xFF9333EA), Color(0xFFC084FC)],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: const Icon(Icons.psychology_outlined, color: Colors.white, size: 18),
-          ),
-          const SizedBox(width: AppSpacing.sm),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                'Nexus AI',
-                style: AppTypography.bodySmall(context).copyWith(
-                  color: AppColors.textMuted,
-                  fontSize: 11,
-                  fontWeight: FontWeight.w600,
-                  letterSpacing: 0.5,
-                ),
-              ),
-              Text(
-                'Problem Hub',
-                style: AppTypography.headlineSmall(context).copyWith(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.textPrimary,
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-      actions: [
-        IconButton(
-          icon: const Icon(Icons.add_box_outlined, color: AppColors.accentPrimary, size: 22),
-          onPressed: () => _showFeedbackToast('Opening Create Problem Record wizard', Icons.add_circle, AppColors.accentPrimary),
-        ),
-        IconButton(
-          icon: const Icon(Icons.notifications_none, color: AppColors.textSecondary, size: 22),
-          onPressed: () => _showFeedbackToast('No unacknowledged recurring anomaly alerts', Icons.notifications_active, const Color(0xFF0D9488)),
-        ),
-        Padding(
-          padding: const EdgeInsets.only(right: AppSpacing.md),
-          child: CircleAvatar(
-            radius: 16,
-            backgroundColor: const Color(0xFFFAF5FF),
-            child: const Text(
-              'PM',
-              style: TextStyle(
-                color: Color(0xFF9333EA),
-                fontWeight: FontWeight.bold,
-                fontSize: 11,
-              ),
-            ),
-          ),
-        ),
-      ],
     );
   }
 
@@ -217,8 +179,8 @@ class _ProblemManagementHubScreenState extends ConsumerState<ProblemManagementHu
                   color: const Color(0xFFF3E8FF),
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: Row(
-                  children: const [
+                child: const Row(
+                  children: [
                     Icon(Icons.sync, size: 12, color: Color(0xFF7C3AED)),
                     SizedBox(width: 4),
                     Text(
@@ -249,6 +211,9 @@ class _ProblemManagementHubScreenState extends ConsumerState<ProblemManagementHu
   }
 
   Widget _buildKpiMetricsGrid(BuildContext context) {
+    final activeCount = _problems.length;
+    final totalLinked = _problems.fold<int>(0, (sum, p) => sum + p.incidentCount);
+
     return LayoutBuilder(
       builder: (context, constraints) {
         final isWide = constraints.maxWidth > 500;
@@ -262,27 +227,27 @@ class _ProblemManagementHubScreenState extends ConsumerState<ProblemManagementHu
           children: [
             _buildKpiCard(
               title: 'ACTIVE PROBLEMS',
-              value: '18',
-              badgeText: '4 in 5-Whys',
+              value: '$activeCount',
+              badgeText: 'ITIL v4',
               badgeColor: const Color(0xFFD97706),
               badgeBg: const Color(0xFFFEF3C7),
               icon: Icons.psychology_outlined,
             ),
             _buildKpiCard(
               title: 'LINKED INCIDENTS',
-              value: '142',
-              badgeText: '-12% MoM',
+              value: '$totalLinked',
+              badgeText: 'Cross-Domain',
               badgeColor: const Color(0xFF0D9488),
               badgeBg: const Color(0xFFCCFBF1),
               icon: Icons.hub_outlined,
             ),
             _buildKpiCard(
-              title: 'PATTERN DEFENSE',
-              value: '84%',
-              badgeText: 'Mitigated',
-              badgeColor: const Color(0xFF0D9488),
-              badgeBg: const Color(0xFFCCFBF1),
-              icon: Icons.security_outlined,
+              title: 'AI PATTERNS',
+              value: '${_patterns.length}',
+              badgeText: 'Vector Space',
+              badgeColor: const Color(0xFF9333EA),
+              badgeBg: const Color(0xFFFAF5FF),
+              icon: Icons.auto_awesome,
             ),
             _buildKpiCard(
               title: 'AVG RCA TIME',
@@ -361,12 +326,27 @@ class _ProblemManagementHubScreenState extends ConsumerState<ProblemManagementHu
   }
 
   Widget _buildAiVectorAnomalyCard(BuildContext context) {
+    if (_patterns.isEmpty) {
+      return Container(
+        padding: const EdgeInsets.all(AppSpacing.md),
+        decoration: BoxDecoration(
+          color: const Color(0xFFFAF5FF),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: const Color(0xFFC084FC).withValues(alpha: 0.3)),
+        ),
+        child: const Text('No active recurring pattern anomalies detected in vector embeddings.', style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+      );
+    }
+
+    final topPattern = _patterns.first;
+    final similarityPct = (topPattern.similarityScore > 1 ? topPattern.similarityScore : topPattern.similarityScore * 100).toStringAsFixed(1);
+
     return Container(
       padding: const EdgeInsets.all(AppSpacing.md),
       decoration: BoxDecoration(
         color: const Color(0xFFFAF5FF),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFC084FC).withOpacity(0.3)),
+        border: Border.all(color: const Color(0xFFC084FC).withValues(alpha: 0.3)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -375,12 +355,12 @@ class _ProblemManagementHubScreenState extends ConsumerState<ProblemManagementHu
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Row(
-                children: const [
-                  Text('✨', style: TextStyle(fontSize: 16)),
-                  SizedBox(width: 6),
+                children: [
+                  const Text('✨', style: TextStyle(fontSize: 16)),
+                  const SizedBox(width: 6),
                   Text(
-                    'Cluster #VEC-098 Anomaly',
-                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Color(0xFF9333EA)),
+                    topPattern.clusterName,
+                    style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Color(0xFF9333EA)),
                   ),
                 ],
               ),
@@ -390,24 +370,22 @@ class _ProblemManagementHubScreenState extends ConsumerState<ProblemManagementHu
                   color: const Color(0xFFF3E8FF),
                   borderRadius: BorderRadius.circular(4),
                 ),
-                child: const Text('96.4% Similarity', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Color(0xFF9333EA))),
+                child: Text('$similarityPct% Match', style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Color(0xFF9333EA))),
               ),
             ],
           ),
           const SizedBox(height: 6),
           Text(
-            '3 incidents in the last 48h share identical Redis cache token pool exhaustion signatures during Okta SSO handshake.',
+            '${topPattern.caseCount} incidents identified in vector space sharing ${topPattern.primaryCategory} operational signatures.',
             style: AppTypography.bodySmall(context).copyWith(color: AppColors.textSecondary),
           ),
           const SizedBox(height: 8),
-          Wrap(
-            spacing: 6,
-            children: [
-              _buildCasePill('NEX-2026-0104'),
-              _buildCasePill('NEX-2026-0098'),
-              _buildCasePill('NEX-2026-0087'),
-            ],
-          ),
+          if (topPattern.sampleCaseTitles.isNotEmpty)
+            Wrap(
+              spacing: 6,
+              runSpacing: 4,
+              children: topPattern.sampleCaseTitles.map((t) => _buildCasePill(t)).toList(),
+            ),
           const SizedBox(height: AppSpacing.sm),
           Row(
             children: [
@@ -421,19 +399,6 @@ class _ProblemManagementHubScreenState extends ConsumerState<ProblemManagementHu
                 icon: const Icon(Icons.bubble_chart_outlined, size: 14),
                 label: const Text('Inspect Vector', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
                 onPressed: () => _showFeedbackToast('Vector distance graph rendered in 3D canvas', Icons.scatter_plot, const Color(0xFF9333EA)),
-              ),
-              const SizedBox(width: 8),
-              ElevatedButton.icon(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.accentPrimary,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
-                  elevation: 0,
-                ),
-                icon: const Icon(Icons.add_circle_outline, size: 14),
-                label: const Text('Create Problem', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
-                onPressed: () => _showFeedbackToast('Master Problem Record PRB-2026-0034 created', Icons.check_circle, const Color(0xFF0D9488)),
               ),
             ],
           ),
@@ -458,6 +423,20 @@ class _ProblemManagementHubScreenState extends ConsumerState<ProblemManagementHu
   }
 
   Widget _buildMasterProblemsSection(BuildContext context) {
+    if (_isLoading) {
+      return const NexusLoadingView(message: 'Loading master problem records & root causes...');
+    }
+    if (_errorMessage != null) {
+      return NexusErrorView(message: _errorMessage!, onRetry: _loadData);
+    }
+    if (_problems.isEmpty) {
+      return const NexusEmptyView(
+        title: 'No Master Problems Found',
+        message: 'No active problem records or linked incidents found.',
+        icon: Icons.psychology_outlined,
+      );
+    }
+
     return Container(
       padding: const EdgeInsets.all(AppSpacing.md),
       decoration: BoxDecoration(
@@ -475,42 +454,28 @@ class _ProblemManagementHubScreenState extends ConsumerState<ProblemManagementHu
                 'Master Problem Records',
                 style: AppTypography.titleMedium(context).copyWith(fontWeight: FontWeight.bold),
               ),
-              const Text(
-                '3 of 18 Active',
-                style: TextStyle(fontSize: 11, color: AppColors.textSecondary),
+              Text(
+                '${_problems.length} Active Records',
+                style: const TextStyle(fontSize: 11, color: AppColors.textSecondary),
               ),
             ],
           ),
           const SizedBox(height: AppSpacing.sm),
-          _buildProblemRecordCard(
-            problemId: 'PRB-2026-0031',
-            title: 'Redis Token Pool Exhaustion on Okta SSO',
-            category: 'Infrastructure',
-            severity: 'CRITICAL',
-            linkedIncidentsCount: 8,
-            kedbStatus: 'WORKAROUND PUBLISHED',
-            rootCause: 'Connection pool limit default set to 1024 rather than 4096 in Kubernetes pod config.',
-          ),
-          const SizedBox(height: AppSpacing.sm),
-          _buildProblemRecordCard(
-            problemId: 'PRB-2026-0029',
-            title: 'Stripe Webhook Exponential Backoff Hang',
-            category: 'Billing Core',
-            severity: 'HIGH',
-            linkedIncidentsCount: 5,
-            kedbStatus: 'ROOT CAUSE CONFIRMED',
-            rootCause: 'TLS handshake timeout in webhook ingress gateway drops retry payload headers.',
-          ),
-          const SizedBox(height: AppSpacing.sm),
-          _buildProblemRecordCard(
-            problemId: 'PRB-2026-0024',
-            title: 'Okta SCIM Sync User Deprovision Delay',
-            category: 'Identity & Access',
-            severity: 'MEDIUM',
-            linkedIncidentsCount: 3,
-            kedbStatus: 'UNDER INVESTIGATION',
-            rootCause: 'Batch cron query lock contention on user entity table during peak hours.',
-          ),
+          ..._problems.map((p) {
+            final shortId = p.id.length > 8 ? p.id.substring(0, 8).toUpperCase() : p.id;
+            return Padding(
+              padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+              child: _buildProblemRecordCard(
+                problemId: 'PRB-$shortId',
+                title: p.title,
+                category: 'Operational Problem',
+                severity: p.status,
+                linkedIncidentsCount: p.incidentCount,
+                kedbStatus: p.status.replaceAll('_', ' '),
+                rootCause: p.rootCause ?? p.description,
+              ),
+            );
+          }),
         ],
       ),
     );
@@ -604,41 +569,6 @@ class _ProblemManagementHubScreenState extends ConsumerState<ProblemManagementHu
               ),
             ],
           ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildBottomNav(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        border: Border(top: BorderSide(color: AppColors.borderLight)),
-      ),
-      child: BottomNavigationBar(
-        currentIndex: _currentNavIndex,
-        onTap: (index) {
-          setState(() => _currentNavIndex = index);
-          if (index == 0) {
-            context.go('/dashboard/team-lead');
-          } else if (index == 1) {
-            context.go('/cases');
-          } else if (index == 2) {
-            context.go('/sla/risk-console');
-          } else if (index == 3) {
-            // Already on problems
-          }
-        },
-        selectedItemColor: AppColors.accentPrimary,
-        unselectedItemColor: AppColors.textSecondary,
-        type: BottomNavigationBarType.fixed,
-        selectedFontSize: 11,
-        unselectedFontSize: 11,
-        items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.dashboard_outlined), label: 'Lead'),
-          BottomNavigationBarItem(icon: Icon(Icons.inbox_outlined), label: 'Feed'),
-          BottomNavigationBarItem(icon: Icon(Icons.radar_outlined), label: 'Radar'),
-          BottomNavigationBarItem(icon: Icon(Icons.psychology_outlined), label: 'Problems'),
         ],
       ),
     );

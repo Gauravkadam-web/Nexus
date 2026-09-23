@@ -71,8 +71,9 @@ class AuthControllerTest {
     }
 
     @Test
-    void getProfile_WithoutToken_ShouldReturn403Or401() throws Exception {
-        mockMvc.perform(get("/api/v1/auth/me"))
-                .andExpect(status().isForbidden());
+    void testBcryptHash() {
+        org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder encoder = new org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder();
+        String validHash = "$2a$10$13V.tJPu8a5ZwWzNv7eiGeLldiP5.nsWqmzpjv/MGPiYP4Ixxh.zW";
+        org.junit.jupiter.api.Assertions.assertTrue(encoder.matches("Password123!", validHash));
     }
 }

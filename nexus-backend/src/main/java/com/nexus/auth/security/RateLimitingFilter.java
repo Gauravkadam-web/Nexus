@@ -46,6 +46,12 @@ public class RateLimitingFilter extends OncePerRequestFilter {
         String path = request.getRequestURI();
         String clientIp = getClientIp(request);
 
+        // Allow CORS preflight requests without rate limiting
+        if ("OPTIONS".equalsIgnoreCase(request.getMethod())) {
+            filterChain.doFilter(request, response);
+            return;
+        }
+
         // Bypass Actuator, Health check, and Swagger UI from strict rate limiting
         if (path.startsWith("/api/v1/health") || path.startsWith("/actuator") ||
             path.startsWith("/swagger-ui") || path.startsWith("/v3/api-docs")) {

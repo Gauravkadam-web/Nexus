@@ -14,8 +14,8 @@ class ApiClient {
     dio = Dio(
       BaseOptions(
         baseUrl: AppConfig.apiBaseUrl,
-        connectTimeout: const Duration(seconds: 10),
-        receiveTimeout: const Duration(seconds: 15),
+        connectTimeout: const Duration(seconds: 30),
+        receiveTimeout: const Duration(seconds: 30),
         headers: {
           'Content-Type': 'application/json',
           'Accept': 'application/json',
@@ -57,7 +57,11 @@ class ApiClient {
       final refreshToken = prefs.getString(_refreshTokenKey);
       if (refreshToken == null || refreshToken.isEmpty) return false;
 
-      final refreshDio = Dio(BaseOptions(baseUrl: AppConfig.apiBaseUrl));
+      final refreshDio = Dio(BaseOptions(
+        baseUrl: AppConfig.apiBaseUrl,
+        connectTimeout: const Duration(seconds: 30),
+        receiveTimeout: const Duration(seconds: 30),
+      ));
       final response = await refreshDio.post(
         '/auth/refresh',
         data: {'refreshToken': refreshToken},

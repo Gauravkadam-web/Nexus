@@ -18,7 +18,7 @@ class AppTheme {
         outline: AppColors.lightBorder,
         surfaceContainerHighest: AppColors.lightSurfaceElevated,
       ),
-      cardTheme: CardTheme(
+      cardTheme: CardThemeData(
         color: AppColors.lightSurface,
         elevation: 0,
         shape: RoundedRectangleBorder(
@@ -66,7 +66,7 @@ class AppTheme {
         outline: AppColors.darkBorder,
         surfaceContainerHighest: AppColors.darkSurfaceElevated,
       ),
-      cardTheme: CardTheme(
+      cardTheme: CardThemeData(
         color: AppColors.darkSurface,
         elevation: 0,
         shape: RoundedRectangleBorder(

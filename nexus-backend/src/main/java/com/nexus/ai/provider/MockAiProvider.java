@@ -3,10 +3,8 @@ package com.nexus.ai.provider;
 import com.nexus.ai.dto.CaseContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
-import org.springframework.stereotype.Component;
-
 import java.math.BigDecimal;
+
 import java.util.List;
 
 /**
@@ -14,8 +12,6 @@ import java.util.List;
  * Returns deterministic, canned responses without making any external API calls.
  * This ensures tests run offline and no AI costs are incurred in dev/CI.
  */
-@Component
-@ConditionalOnProperty(name = "nexus.ai.provider", havingValue = "mock", matchIfMissing = true)
 public class MockAiProvider implements AiProviderPort {
 
     private static final Logger log = LoggerFactory.getLogger(MockAiProvider.class);
@@ -92,4 +88,3 @@ public class MockAiProvider implements AiProviderPort {
         );
     }
 }
-

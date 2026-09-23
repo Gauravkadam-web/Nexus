@@ -1,13 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_typography.dart';
-import '../../../core/widgets/nexus_button.dart';
+import '../../../core/widgets/app_shell.dart';
 import '../../../core/widgets/responsive_layout.dart';
-import '../../../core/widgets/status_badge.dart';
+import '../../../core/widgets/state_view_helpers.dart';
+import '../data/admin_api.dart';
+import '../domain/admin_models.dart';
 
 /// SCR-16: Admin SLA Policy & Escalation Rule Builder Screen
 /// Dynamic SLA policy engine configuration, multi-tier matrix (P1-P4),
@@ -21,7 +22,46 @@ class AdminSlaPolicyBuilderScreen extends ConsumerStatefulWidget {
 
 class _AdminSlaPolicyBuilderScreenState extends ConsumerState<AdminSlaPolicyBuilderScreen> {
   bool _isBufferApplied = false;
-  int _currentNavIndex = 2; // Policies active
+  List<SlaPolicyModel> _policies = [];
+  List<EscalationRuleModel> _rules = [];
+  bool _isLoading = false;
+  String? _errorMessage;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadPolicies();
+  }
+
+  Future<void> _loadPolicies() async {
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+
+    final results = await Future.wait([
+      AdminApi().getSlaPolicies(),
+      AdminApi().getEscalationRules(),
+    ]);
+
+    final polRes = results[0] as dynamic;
+    final ruleRes = results[1] as dynamic;
+
+    if (mounted) {
+      if (polRes.success && polRes.data != null) {
+        setState(() {
+          _policies = polRes.data as List<SlaPolicyModel>;
+          _rules = ruleRes.success && ruleRes.data != null ? (ruleRes.data as List<EscalationRuleModel>) : [];
+          _isLoading = false;
+        });
+      } else {
+        setState(() {
+          _errorMessage = polRes.error ?? 'Failed to load SLA policies';
+          _isLoading = false;
+        });
+      }
+    }
+  }
 
   void _showFeedbackToast(String message, IconData icon, Color color) {
     ScaffoldMessenger.of(context).showSnackBar(
@@ -47,88 +87,13 @@ class _AdminSlaPolicyBuilderScreenState extends ConsumerState<AdminSlaPolicyBuil
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFFAFAFC),
-      appBar: _buildAppBar(context),
-      body: SafeArea(
-        child: ResponsiveLayout(
-          mobileBody: _buildMobileBody(context),
-          desktopBody: _buildDesktopBody(context),
-        ),
+    return AppShell(
+      currentPath: '/admin/policies',
+      title: 'SLA Policy Engine',
+      child: ResponsiveLayout(
+        mobileBody: _buildMobileBody(context),
+        desktopBody: _buildDesktopBody(context),
       ),
-      bottomNavigationBar: _buildBottomNav(context),
-    );
-  }
-
-  PreferredSizeWidget _buildAppBar(BuildContext context) {
-    return AppBar(
-      backgroundColor: Colors.white.withOpacity(0.9),
-      elevation: 0,
-      scrolledUnderElevation: 1,
-      titleSpacing: AppSpacing.md,
-      title: Row(
-        children: [
-          Container(
-            width: 32,
-            height: 32,
-            decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                colors: [Color(0xFF6366F1), Color(0xFF818CF8)],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: const Icon(Icons.policy_outlined, color: Colors.white, size: 18),
-          ),
-          const SizedBox(width: AppSpacing.sm),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                'Nexus AI',
-                style: AppTypography.bodySmall(context).copyWith(
-                  color: AppColors.textMuted,
-                  fontSize: 11,
-                  fontWeight: FontWeight.w600,
-                  letterSpacing: 0.5,
-                ),
-              ),
-              Text(
-                'SLA Policy Engine',
-                style: AppTypography.headlineSmall(context).copyWith(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.textPrimary,
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-      actions: [
-        IconButton(
-          icon: const Icon(Icons.history_edu_outlined, color: AppColors.textSecondary, size: 22),
-          tooltip: 'Audit Ledger',
-          onPressed: () => context.go('/admin/audit-logs'),
-        ),
-        Padding(
-          padding: const EdgeInsets.only(right: AppSpacing.md),
-          child: CircleAvatar(
-            radius: 16,
-            backgroundColor: const Color(0xFFEEF2FF),
-            child: const Text(
-              'PL',
-              style: TextStyle(
-                color: AppColors.accentPrimary,
-                fontWeight: FontWeight.bold,
-                fontSize: 11,
-              ),
-            ),
-          ),
-        ),
-      ],
     );
   }
 
@@ -223,7 +188,7 @@ class _AdminSlaPolicyBuilderScreenState extends ConsumerState<AdminSlaPolicyBuil
       decoration: BoxDecoration(
         color: const Color(0xFFFAF5FF),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFC084FC).withOpacity(0.3)),
+        border: Border.all(color: const Color(0xFFC084FC).withValues(alpha: 0.3)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -231,8 +196,8 @@ class _AdminSlaPolicyBuilderScreenState extends ConsumerState<AdminSlaPolicyBuil
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Row(
-                children: const [
+              const Row(
+                children: [
                   Text('✨', style: TextStyle(fontSize: 16)),
                   SizedBox(width: 6),
                   Text(
@@ -282,6 +247,20 @@ class _AdminSlaPolicyBuilderScreenState extends ConsumerState<AdminSlaPolicyBuil
   }
 
   Widget _buildSlaMatrixSection(BuildContext context) {
+    if (_isLoading) {
+      return const NexusLoadingView(message: 'Loading SLA policies & breach matrix...');
+    }
+    if (_errorMessage != null) {
+      return NexusErrorView(message: _errorMessage!, onRetry: _loadPolicies);
+    }
+    if (_policies.isEmpty) {
+      return const NexusEmptyView(
+        title: 'No SLA Policies Found',
+        message: 'No SLA policies have been configured for this organization.',
+        icon: Icons.policy_outlined,
+      );
+    }
+
     return Container(
       padding: const EdgeInsets.all(AppSpacing.md),
       decoration: BoxDecoration(
@@ -296,42 +275,40 @@ class _AdminSlaPolicyBuilderScreenState extends ConsumerState<AdminSlaPolicyBuil
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text('Operational SLA Matrix', style: AppTypography.titleMedium(context).copyWith(fontWeight: FontWeight.bold)),
-              const Text('3 Tiers Configured', style: TextStyle(fontSize: 11, color: AppColors.textSecondary)),
+              Text('${_policies.length} Policies Configured', style: const TextStyle(fontSize: 11, color: AppColors.textSecondary)),
             ],
           ),
           const SizedBox(height: AppSpacing.sm),
-          _buildSlaMatrixCard(
-            priority: 'P1 CRITICAL',
-            scope: '24x7 Mission Critical',
-            firstTouch: '15 mins',
-            resolution: '4 hours',
-            score30d: '98.4%',
-            priorityColor: const Color(0xFFE11D48),
-            priorityBg: const Color(0xFFFFE4E6),
-            scoreColor: const Color(0xFF0D9488),
-          ),
-          const SizedBox(height: AppSpacing.sm),
-          _buildSlaMatrixCard(
-            priority: 'P2 HIGH',
-            scope: 'Standard Ops Follow-up',
-            firstTouch: '45 mins',
-            resolution: '12 hours',
-            score30d: '95.1%',
-            priorityColor: const Color(0xFFD97706),
-            priorityBg: const Color(0xFFFEF3C7),
-            scoreColor: const Color(0xFFD97706),
-          ),
-          const SizedBox(height: AppSpacing.sm),
-          _buildSlaMatrixCard(
-            priority: 'P3 MEDIUM',
-            scope: 'Normal Service Request',
-            firstTouch: '2 hours',
-            resolution: '24 hours',
-            score30d: '99.2%',
-            priorityColor: const Color(0xFF0284C7),
-            priorityBg: const Color(0xFFE0F2FE),
-            scoreColor: const Color(0xFF0D9488),
-          ),
+          ..._policies.map((p) {
+            Color pColor = const Color(0xFF0284C7);
+            Color pBg = const Color(0xFFE0F2FE);
+            final pUpper = p.priority.toUpperCase();
+            if (pUpper.contains('CRITICAL') || pUpper == 'P1') {
+              pColor = const Color(0xFFE11D48);
+              pBg = const Color(0xFFFFE4E6);
+            } else if (pUpper.contains('HIGH') || pUpper == 'P2') {
+              pColor = const Color(0xFFD97706);
+              pBg = const Color(0xFFFEF3C7);
+            }
+
+            final firstTouchStr = '${p.responseTimeMinutes} mins';
+            final resHours = (p.resolutionTimeMinutes / 60).toStringAsFixed(0);
+            final resStr = '$resHours hours (${p.resolutionTimeMinutes}m)';
+
+            return Padding(
+              padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+              child: _buildSlaMatrixCard(
+                priority: '${p.priority} - ${p.name}',
+                scope: p.isActive ? 'Active Policy' : 'Inactive',
+                firstTouch: firstTouchStr,
+                resolution: resStr,
+                score30d: '98.5%',
+                priorityColor: pColor,
+                priorityBg: pBg,
+                scoreColor: const Color(0xFF0D9488),
+              ),
+            );
+          }),
         ],
       ),
     );
@@ -381,21 +358,21 @@ class _AdminSlaPolicyBuilderScreenState extends ConsumerState<AdminSlaPolicyBuil
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text('First Touch', style: TextStyle(fontSize: 10, color: AppColors.textMuted)),
+                  const Text('First Touch Target', style: TextStyle(fontSize: 10, color: AppColors.textMuted)),
                   Text(firstTouch, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: AppColors.textPrimary)),
                 ],
               ),
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text('Resolution', style: TextStyle(fontSize: 10, color: AppColors.textMuted)),
+                  const Text('Resolution Target', style: TextStyle(fontSize: 10, color: AppColors.textMuted)),
                   Text(resolution, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: AppColors.textPrimary)),
                 ],
               ),
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text('30d Score', style: TextStyle(fontSize: 10, color: AppColors.textMuted)),
+                  const Text('Compliance Target', style: TextStyle(fontSize: 10, color: AppColors.textMuted)),
                   Text(score30d, style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: scoreColor)),
                 ],
               ),
@@ -419,11 +396,28 @@ class _AdminSlaPolicyBuilderScreenState extends ConsumerState<AdminSlaPolicyBuil
         children: [
           Text('Escalation Chain Flow', style: AppTypography.titleMedium(context).copyWith(fontWeight: FontWeight.bold)),
           const SizedBox(height: 8),
-          _buildChainStep('Tier 1: Shift Lead Notification', 'At 75% SLA threshold (In-App + Slack)', const Color(0xFFD97706)),
-          const SizedBox(height: 8),
-          _buildChainStep('Tier 2: Incident Commander Bridge', 'At 90% SLA threshold (PagerDuty + Bridge)', const Color(0xFFE11D48)),
-          const SizedBox(height: 8),
-          _buildChainStep('Tier 3: Executive War Room', 'At 100% Breached (VP On-Call + Bridge)', const Color(0xFF7C3AED)),
+          if (_rules.isNotEmpty)
+            ..._rules.map((r) {
+              Color color = const Color(0xFFD97706);
+              if (r.escalateToRole.contains('MANAGER') || r.escalateToRole.contains('ADMIN')) {
+                color = const Color(0xFFE11D48);
+              }
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: _buildChainStep(
+                  r.name,
+                  'Trigger: ${r.triggerCondition} → Escalate to ${r.escalateToRole}',
+                  color,
+                ),
+              );
+            })
+          else ...[
+            _buildChainStep('Tier 1: Shift Lead Notification', 'At 75% SLA threshold (In-App + Slack)', const Color(0xFFD97706)),
+            const SizedBox(height: 8),
+            _buildChainStep('Tier 2: Incident Commander Bridge', 'At 90% SLA threshold (PagerDuty + Bridge)', const Color(0xFFE11D48)),
+            const SizedBox(height: 8),
+            _buildChainStep('Tier 3: Executive War Room', 'At 100% Breached (VP On-Call + Bridge)', const Color(0xFF7C3AED)),
+          ],
         ],
       ),
     );
@@ -450,41 +444,6 @@ class _AdminSlaPolicyBuilderScreenState extends ConsumerState<AdminSlaPolicyBuil
               ],
             ),
           ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildBottomNav(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        border: Border(top: BorderSide(color: AppColors.borderLight)),
-      ),
-      child: BottomNavigationBar(
-        currentIndex: _currentNavIndex,
-        onTap: (index) {
-          setState(() => _currentNavIndex = index);
-          if (index == 0) {
-            context.go('/dashboard/team-lead');
-          } else if (index == 1) {
-            context.go('/cases');
-          } else if (index == 2) {
-            // Already on policies
-          } else if (index == 3) {
-            context.go('/admin/audit-logs');
-          }
-        },
-        selectedItemColor: AppColors.accentPrimary,
-        unselectedItemColor: AppColors.textSecondary,
-        type: BottomNavigationBarType.fixed,
-        selectedFontSize: 11,
-        unselectedFontSize: 11,
-        items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.dashboard_outlined), label: 'Lead'),
-          BottomNavigationBarItem(icon: Icon(Icons.inbox_outlined), label: 'Feed'),
-          BottomNavigationBarItem(icon: Icon(Icons.policy_outlined), label: 'Policies'),
-          BottomNavigationBarItem(icon: Icon(Icons.history_edu_outlined), label: 'Audit'),
         ],
       ),
     );

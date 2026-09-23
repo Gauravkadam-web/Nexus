@@ -1,16 +1,21 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
-import 'package:intl/intl.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_typography.dart';
+import '../../../core/widgets/app_shell.dart';
 import '../../../core/widgets/nexus_button.dart';
 import '../../../core/widgets/responsive_layout.dart';
+import '../../../core/widgets/state_view_helpers.dart';
 import '../../../core/widgets/status_badge.dart';
-import '../domain/case_model.dart';
-import 'case_state_provider.dart';
+import '../../audit/data/audit_api.dart';
+import '../../audit/domain/audit_model.dart';
+import '../../case/data/case_repository.dart';
+import '../../case/domain/case_model.dart';
+import '../../collaboration/data/collaboration_api.dart';
+import '../../resolution/data/resolution_api.dart';
+import '../../resolution/domain/resolution_model.dart';
 
 /// SCR-05: Requester Case Tracker & Confirmation Screen.
 /// Provides real-time milestone trajectory, SLA countdown, and operator communication.
@@ -28,8 +33,111 @@ class CaseTrackerScreen extends ConsumerStatefulWidget {
 
 class _CaseTrackerScreenState extends ConsumerState<CaseTrackerScreen> {
   final TextEditingController _noteController = TextEditingController();
+  final CaseRepository _caseRepo = CaseRepository();
+  final AuditApi _auditApi = AuditApi();
+  final ResolutionApi _resolutionApi = ResolutionApi();
+
+  CaseModel? _caseDetail;
+  AiAnalysisModel? _aiAnalysis;
+  ResolutionModel? _proposal;
+  List<AuditLogModel> _timeline = [];
+  bool _isLoading = false;
   bool _isLogAttached = false;
   bool _isResolvedConfirmed = false;
+  String? _errorMessage;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadTrackerData();
+  }
+
+  Future<void> _loadTrackerData() async {
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+
+    final caseId = widget.caseId;
+    final results = await Future.wait([
+      _caseRepo.getCaseDetail(caseId),
+      _caseRepo.getAiAnalysis(caseId),
+      _auditApi.getCaseTimeline(caseId),
+      _resolutionApi.getProposal(caseId),
+    ]);
+
+    final caseRes = results[0] as dynamic;
+    final aiRes = results[1] as dynamic;
+    final timelineRes = results[2] as dynamic;
+    final propRes = results[3] as dynamic;
+
+    if (mounted) {
+      if (caseRes.success && caseRes.data != null) {
+        final caseData = caseRes.data as CaseModel;
+        final proposal = propRes.success && propRes.data != null ? (propRes.data as ResolutionModel) : null;
+
+        setState(() {
+          _caseDetail = caseData;
+          _aiAnalysis = aiRes.success && aiRes.data != null ? (aiRes.data as AiAnalysisModel) : null;
+          _timeline = timelineRes.success && timelineRes.data != null ? (timelineRes.data as List<AuditLogModel>) : [];
+          _proposal = proposal;
+          _isResolvedConfirmed = caseData.status == 'RESOLVED' || caseData.status == 'CLOSED';
+          _isLoading = false;
+        });
+      } else {
+        setState(() {
+          _errorMessage = caseRes.error ?? 'Failed to load case tracking details';
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _sendNote() async {
+    final text = _noteController.text.trim();
+    if (text.isEmpty) {
+      _showFeedbackToast('Please enter a note before sending.', Icons.info_outline, Colors.orange);
+      return;
+    }
+
+    final res = await CollaborationApi().addInternalNote(
+      caseId: widget.caseId,
+      content: text,
+    );
+
+    if (mounted) {
+      if (res.success) {
+        _noteController.clear();
+        setState(() => _isLogAttached = false);
+        _showFeedbackToast('Note sent to Operator ${_caseDetail?.assignedToName ?? "Triage Team"}.', Icons.send, AppColors.primary);
+      } else {
+        _showFeedbackToast(res.error ?? 'Failed to send note', Icons.error_outline, const Color(0xFFE11D48));
+      }
+    }
+  }
+
+  Future<void> _handleConfirmResolution(bool confirmed) async {
+    final res = confirmed
+        ? await _resolutionApi.confirmResolution(widget.caseId)
+        : await _resolutionApi.rejectResolution(
+            caseId: widget.caseId,
+            rejectionReason: 'Requester reported issue still persisting',
+          );
+
+    if (mounted) {
+      if (res.success) {
+        setState(() => _isResolvedConfirmed = confirmed);
+        _showFeedbackToast(
+          confirmed ? 'Case confirmed resolved and closed.' : 'Reopen signal dispatched to triage team.',
+          confirmed ? Icons.task_alt : Icons.report_problem,
+          confirmed ? AppColors.statusClosedTextLight : AppColors.statusBreachedTextLight,
+        );
+        _loadTrackerData();
+      } else {
+        _showFeedbackToast(res.error ?? 'Action failed', Icons.error_outline, const Color(0xFFE11D48));
+      }
+    }
+  }
 
   @override
   void dispose() {
@@ -63,61 +171,26 @@ class _CaseTrackerScreenState extends ConsumerState<CaseTrackerScreen> {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    return Scaffold(
-      backgroundColor: isDark ? AppColors.darkBackground : AppColors.lightBackground,
-      appBar: AppBar(
-        backgroundColor: isDark ? AppColors.darkSurface : AppColors.lightSurface,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
-          onPressed: () {
-            if (context.canPop()) {
-              context.pop();
-            } else {
-              context.go('/dashboard/requester');
-            }
-          },
-        ),
-        title: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Case Tracker',
-              style: AppTypography.headlineSmall(context),
-            ),
-            Text(
-              'ID: ${widget.caseId}',
-              style: AppTypography.codeSmall(context).copyWith(
-                color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.notifications_active_outlined),
-            tooltip: 'Case Subscribed',
-            onPressed: () {
-              _showFeedbackToast(
-                'Live SLA updates enabled for this incident.',
-                Icons.notifications_active,
-                AppColors.primary,
-              );
-            },
-          ),
-          const SizedBox(width: AppSpacing.xs),
-        ],
-      ),
-      body: ResponsiveLayout(
-        mobile: _buildContent(context, isDark, isMobile: true),
-        tablet: _buildContent(context, isDark, isMobile: false),
-        desktop: Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 1000),
-            child: _buildContent(context, isDark, isMobile: false),
-          ),
-        ),
-      ),
+    return AppShell(
+      currentPath: '/dashboard/requester',
+      title: 'Case Tracker',
+      child: _isLoading
+          ? const NexusLoadingView(message: 'Tracking case milestone trajectory & telemetry...')
+          : _errorMessage != null
+              ? NexusErrorView(
+                  message: _errorMessage!,
+                  onRetry: _loadTrackerData,
+                )
+              : ResponsiveLayout(
+                  mobileBody: _buildContent(context, isDark, isMobile: true),
+                  tabletBody: _buildContent(context, isDark, isMobile: false),
+                  desktopBody: Center(
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 1000),
+                      child: _buildContent(context, isDark, isMobile: false),
+                    ),
+                  ),
+                ),
     );
   }
 
@@ -147,6 +220,13 @@ class _CaseTrackerScreenState extends ConsumerState<CaseTrackerScreen> {
   }
 
   Widget _buildHeaderSummaryCard(BuildContext context, bool isDark) {
+    final status = _caseDetail?.status ?? 'INVESTIGATING';
+    final severity = _caseDetail?.severity ?? 'CRITICAL';
+    final title = _caseDetail?.title ?? 'Authentication Gateway Timeout during SSO federation';
+    final description = _caseDetail?.description ??
+        'Kubernetes ingress controller intermittent 502 Bad Gateway under concurrent SSO callbacks.';
+    final category = _caseDetail?.categoryName ?? 'Infrastructure';
+
     return Container(
       padding: const EdgeInsets.all(AppSpacing.md),
       decoration: BoxDecoration(
@@ -160,13 +240,13 @@ class _CaseTrackerScreenState extends ConsumerState<CaseTrackerScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
-            mainAxisAlignment: MainAxisAlignment.between,
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Row(
                 children: [
-                  StatusBadge(status: CaseStatus.investigating),
+                  StatusBadge(status: status),
                   const SizedBox(width: AppSpacing.xs),
-                  StatusBadge(severity: CaseSeverity.critical),
+                  StatusBadge(severity: severity),
                 ],
               ),
               Container(
@@ -185,7 +265,9 @@ class _CaseTrackerScreenState extends ConsumerState<CaseTrackerScreen> {
                     ),
                     const SizedBox(width: 4),
                     Text(
-                      'SLA: 1h 15m left',
+                      _caseDetail?.slaRiskLevel == 'BREACHED'
+                          ? 'SLA: BREACHED'
+                          : 'SLA: ${_caseDetail?.slaRiskLevel ?? "COMPLIANT"}',
                       style: AppTypography.codeSmall(context).copyWith(
                         fontWeight: FontWeight.bold,
                         color: isDark ? AppColors.statusWaitingTextDark : AppColors.statusWaitingTextLight,
@@ -198,12 +280,12 @@ class _CaseTrackerScreenState extends ConsumerState<CaseTrackerScreen> {
           ),
           const SizedBox(height: AppSpacing.sm),
           Text(
-            'Authentication Gateway Timeout during SSO federation',
+            title,
             style: AppTypography.headlineSmall(context),
           ),
           const SizedBox(height: AppSpacing.xs),
           Text(
-            'Kubernetes ingress controller intermittent 502 Bad Gateway under concurrent SSO callbacks.',
+            description,
             style: AppTypography.bodySmall(context).copyWith(
               color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
             ),
@@ -220,13 +302,13 @@ class _CaseTrackerScreenState extends ConsumerState<CaseTrackerScreen> {
                 const Icon(Icons.domain_verification, size: 18, color: AppColors.primary),
                 const SizedBox(width: AppSpacing.xs),
                 Text(
-                  'Affected Service: ',
+                  'Affected Category: ',
                   style: AppTypography.bodySmall(context).copyWith(
                     color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
                   ),
                 ),
                 Text(
-                  'Okta Enterprise SSO (us-east-prod-04)',
+                  category,
                   style: AppTypography.titleSmall(context),
                 ),
               ],
@@ -238,6 +320,16 @@ class _CaseTrackerScreenState extends ConsumerState<CaseTrackerScreen> {
   }
 
   Widget _buildMilestoneProgressionCard(BuildContext context, bool isDark) {
+    final currentStatus = _caseDetail?.status ?? 'NEW';
+
+    const isReportedDone = true;
+    final isTriagedDone = currentStatus != 'NEW';
+    final isInvestigatingDone = currentStatus == 'RESOLVED' || currentStatus == 'CLOSED';
+    final isInvestigatingActive = currentStatus == 'INVESTIGATING' || currentStatus == 'IN_PROGRESS' || currentStatus == 'ASSIGNED';
+    final isProposalDone = currentStatus == 'RESOLVED' || currentStatus == 'CLOSED';
+    final isProposalActive = _proposal != null && _proposal!.status == 'PENDING';
+    final isClosedDone = currentStatus == 'CLOSED';
+
     return Container(
       padding: const EdgeInsets.all(AppSpacing.md),
       decoration: BoxDecoration(
@@ -251,7 +343,7 @@ class _CaseTrackerScreenState extends ConsumerState<CaseTrackerScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
-            mainAxisAlignment: MainAxisAlignment.between,
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Row(
                 children: [
@@ -267,7 +359,7 @@ class _CaseTrackerScreenState extends ConsumerState<CaseTrackerScreen> {
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Text(
-                  'ETA ~12:30 PM',
+                  _timeline.isNotEmpty ? '${_timeline.length} AUDIT EVENTS' : 'ACTIVE PIPELINE',
                   style: AppTypography.codeSmall(context).copyWith(
                     color: isDark ? AppColors.statusAssignedTextDark : AppColors.statusAssignedTextLight,
                     fontWeight: FontWeight.bold,
@@ -281,41 +373,42 @@ class _CaseTrackerScreenState extends ConsumerState<CaseTrackerScreen> {
             context,
             stepNum: '1',
             title: 'Incident Reported',
-            time: '10:14 AM',
-            isCompleted: true,
+            time: _caseDetail?.createdAt != null ? _caseDetail!.createdAt.toIso8601String().substring(11, 16) : 'Recorded',
+            isCompleted: isReportedDone,
             isDark: isDark,
           ),
           _buildMilestoneStep(
             context,
             stepNum: '2',
-            title: 'Triaged & P1 Assigned',
-            time: '10:22 AM',
-            isCompleted: true,
+            title: 'Triaged & ${_caseDetail?.priority ?? "P1"} Assigned',
+            time: isTriagedDone ? 'Assigned' : 'Pending',
+            isCompleted: isTriagedDone,
             isDark: isDark,
           ),
           _buildMilestoneStep(
             context,
             stepNum: '3',
-            title: 'Diagnostic Investigation (Elena Vance)',
-            time: 'In Progress',
-            isCompleted: false,
-            isActive: true,
+            title: 'Diagnostic Investigation (${_caseDetail?.assignedToName ?? "Triage Ops"})',
+            time: isInvestigatingActive ? 'In Progress' : (isInvestigatingDone ? 'Completed' : 'Pending'),
+            isCompleted: isInvestigatingDone,
+            isActive: isInvestigatingActive,
             isDark: isDark,
           ),
           _buildMilestoneStep(
             context,
             stepNum: '4',
             title: 'Resolution Proposal',
-            time: 'Pending',
-            isCompleted: false,
+            time: isProposalDone ? 'Approved' : (isProposalActive ? 'Awaiting Signoff' : 'Pending'),
+            isCompleted: isProposalDone,
+            isActive: isProposalActive,
             isDark: isDark,
           ),
           _buildMilestoneStep(
             context,
             stepNum: '5',
             title: 'Requester Verification & Close',
-            time: 'Pending',
-            isCompleted: false,
+            time: isClosedDone ? 'Closed' : 'Pending',
+            isCompleted: isClosedDone,
             isLast: true,
             isDark: isDark,
           ),
@@ -384,7 +477,7 @@ class _CaseTrackerScreenState extends ConsumerState<CaseTrackerScreen> {
           child: Padding(
             padding: const EdgeInsets.only(top: 4),
             child: Row(
-              mainAxisAlignment: MainAxisAlignment.between,
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Expanded(
                   child: Text(
@@ -410,6 +503,9 @@ class _CaseTrackerScreenState extends ConsumerState<CaseTrackerScreen> {
   }
 
   Widget _buildAiRemediationCard(BuildContext context, bool isDark) {
+    final summary = _aiAnalysis?.executiveSummary ??
+        'Ingress envoy logs indicate connection pool saturation during burst traffic. Suggested playbook applied to standby pods.';
+
     return Container(
       padding: const EdgeInsets.all(AppSpacing.md),
       decoration: BoxDecoration(
@@ -434,7 +530,7 @@ class _CaseTrackerScreenState extends ConsumerState<CaseTrackerScreen> {
           ),
           const SizedBox(height: AppSpacing.xs),
           Text(
-            'Ingress envoy logs indicate connection pool saturation during burst traffic. Suggested playbook #ENV-884 applied to standby pods.',
+            summary,
             style: AppTypography.bodySmall(context),
           ),
           const SizedBox(height: AppSpacing.sm),
@@ -445,16 +541,7 @@ class _CaseTrackerScreenState extends ConsumerState<CaseTrackerScreen> {
                   text: _isResolvedConfirmed ? 'Resolution Verified' : 'Confirm Resolution',
                   icon: Icons.check_circle_outline,
                   variant: NexusButtonVariant.secondary,
-                  onPressed: _isResolvedConfirmed
-                      ? null
-                      : () {
-                          setState(() => _isResolvedConfirmed = true);
-                          _showFeedbackToast(
-                            'Case NEX-2026-0104 confirmed resolved.',
-                            Icons.task_alt,
-                            AppColors.statusClosedTextLight,
-                          );
-                        },
+                  onPressed: _isResolvedConfirmed ? null : () => _handleConfirmResolution(true),
                 ),
               ),
               const SizedBox(width: AppSpacing.sm),
@@ -462,13 +549,7 @@ class _CaseTrackerScreenState extends ConsumerState<CaseTrackerScreen> {
                 text: 'Reopen',
                 icon: Icons.refresh,
                 variant: NexusButtonVariant.ghost,
-                onPressed: () {
-                  _showFeedbackToast(
-                    'Reopen signal dispatched to triage lead.',
-                    Icons.report_problem,
-                    AppColors.statusBreachedTextLight,
-                  );
-                },
+                onPressed: () => _handleConfirmResolution(false),
               ),
             ],
           ),
@@ -496,7 +577,7 @@ class _CaseTrackerScreenState extends ConsumerState<CaseTrackerScreen> {
             controller: _noteController,
             maxLines: 3,
             decoration: InputDecoration(
-              hintText: 'Type an operational note or paste log trace for Elena Vance...',
+              hintText: 'Type an operational note or paste log trace for ${_caseDetail?.assignedToName ?? "Triage Ops"}...',
               hintStyle: AppTypography.bodySmall(context).copyWith(
                 color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
               ),
@@ -510,7 +591,7 @@ class _CaseTrackerScreenState extends ConsumerState<CaseTrackerScreen> {
           ),
           const SizedBox(height: AppSpacing.sm),
           Row(
-            mainAxisAlignment: MainAxisAlignment.between,
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               OutlinedButton.icon(
                 icon: Icon(
@@ -531,16 +612,7 @@ class _CaseTrackerScreenState extends ConsumerState<CaseTrackerScreen> {
               NexusButton(
                 text: 'Send Note',
                 icon: Icons.send,
-                onPressed: () {
-                  final text = _noteController.text.trim();
-                  if (text.isEmpty) {
-                    _showFeedbackToast('Please enter a note before sending.', Icons.info_outline, Colors.orange);
-                    return;
-                  }
-                  _noteController.clear();
-                  setState(() => _isLogAttached = false);
-                  _showFeedbackToast('Note sent to Operator Elena Vance.', Icons.send, AppColors.primary);
-                },
+                onPressed: _sendNote,
               ),
             ],
           ),

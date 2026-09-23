@@ -2,12 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
-import '../../../app.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_typography.dart';
+import '../../../core/widgets/app_shell.dart';
 import '../../../core/widgets/kpi_card.dart';
 import '../../../core/widgets/nexus_button.dart';
+import '../../../core/widgets/nexus_data_table.dart';
 import '../../../core/widgets/responsive_layout.dart';
 import '../../../core/widgets/status_badge.dart';
 import '../../auth/presentation/auth_state_provider.dart';
@@ -24,185 +25,255 @@ class RequesterDashboardScreen extends ConsumerWidget {
     final authState = ref.watch(authStateProvider);
     final user = authState.user;
 
-    return Scaffold(
-      backgroundColor: isDark ? AppColors.darkCanvas : AppColors.lightCanvas,
-      appBar: _buildAppBar(context, ref, isDark, user?.name ?? 'Requester'),
-      floatingActionButton: ResponsiveLayout.isMobile(context)
-          ? FloatingActionButton.extended(
-              onPressed: () => context.go('/cases/new'),
-              backgroundColor: isDark ? AppColors.accentPrimaryDark : AppColors.accentPrimary,
-              icon: const Icon(Icons.add, color: Colors.white),
-              label: const Text('Report Case', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
-            )
-          : null,
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: EdgeInsets.symmetric(
-            horizontal: ResponsiveLayout.isMobile(context)
-                ? AppSpacing.mobileGutter
-                : AppSpacing.desktopGutter,
-            vertical: AppSpacing.lg,
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Welcome & Action Header
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Welcome back, ${user?.name.split(' ').first ?? 'Sarah'}',
-                        style: AppTypography.headlineMedium(isDark),
-                      ),
-                      const SizedBox(height: AppSpacing.xs),
-                      Text(
-                        'Track your active support requests and organization tickets.',
-                        style: AppTypography.bodySmall(isDark),
+    return AppShell(
+      currentPath: '/dashboard/requester',
+      title: 'Requester Portal',
+      child: SingleChildScrollView(
+        padding: EdgeInsets.symmetric(
+          horizontal: ResponsiveLayout.isMobile(context)
+              ? AppSpacing.mobileGutter
+              : AppSpacing.desktopGutter,
+          vertical: AppSpacing.lg,
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // 1. Welcome & Primary Action Header
+            Wrap(
+              alignment: WrapAlignment.spaceBetween,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              spacing: AppSpacing.md,
+              runSpacing: AppSpacing.sm,
+              children: [
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Wrap(
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      spacing: AppSpacing.sm,
+                      runSpacing: AppSpacing.xs,
+                      children: [
+                        Text(
+                          'Welcome back, ${user?.name.split(' ').first ?? 'Sarah'}',
+                          style: AppTypography.displayLarge(isDark).copyWith(fontSize: 24),
+                        ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: isDark ? AppColors.statusClosedBgDark : AppColors.statusClosedBgLight,
+                            borderRadius: BorderRadius.circular(AppSpacing.radiusFull),
+                            border: Border.all(
+                              color: isDark ? AppColors.statusClosedTextDark : AppColors.statusClosedTextLight,
+                            ),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Container(
+                                width: 6,
+                                height: 6,
+                                decoration: BoxDecoration(
+                                  color: isDark ? AppColors.statusClosedTextDark : AppColors.statusClosedTextLight,
+                                  shape: BoxShape.circle,
+                                ),
+                              ),
+                              const SizedBox(width: 4),
+                              Text(
+                                'Operational',
+                                style: TextStyle(
+                                  color: isDark ? AppColors.statusClosedTextDark : AppColors.statusClosedTextLight,
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: AppSpacing.xs),
+                    Text(
+                      'Acme Corp Enterprise Portal • All systems normal',
+                      style: AppTypography.bodySmall(isDark),
+                    ),
+                  ],
+                ),
+                Wrap(
+                  spacing: AppSpacing.sm,
+                  runSpacing: AppSpacing.xs,
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  children: [
+                    if (!ResponsiveLayout.isMobile(context)) ...[
+                      OutlinedButton.icon(
+                        onPressed: () {},
+                        icon: Icon(
+                          Icons.menu_book_outlined,
+                          size: 18,
+                          color: isDark ? AppColors.darkTextPrimary : AppColors.lightTextPrimary,
+                        ),
+                        label: Text(
+                          'Help Center',
+                          style: TextStyle(
+                            color: isDark ? AppColors.darkTextPrimary : AppColors.lightTextPrimary,
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        style: OutlinedButton.styleFrom(
+                          side: BorderSide(color: isDark ? AppColors.darkBorder : AppColors.lightBorder),
+                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
+                          ),
+                        ),
                       ),
                     ],
-                  ),
-                  if (!ResponsiveLayout.isMobile(context))
                     NexusButton(
-                      text: '+ Report a Case',
+                      text: 'Report a Case',
                       icon: Icons.add,
                       onPressed: () => context.go('/cases/new'),
                     ),
-                ],
-              ),
-              const SizedBox(height: AppSpacing.xl),
+                  ],
+                ),
+              ],
+            ),
+            const SizedBox(height: AppSpacing.xl),
 
-              // KPI Row (4 cards on Desktop, 2x2 grid on Mobile)
-              _buildKpiGrid(context, isDark, caseState.requesterStats),
-              const SizedBox(height: AppSpacing.xl),
+            // 2. KPI Telemetry Row (4 cards with sparklines)
+            _buildKpiGrid(context, isDark, caseState.requesterStats),
+            const SizedBox(height: AppSpacing.xl),
 
-              // Action Required Callout Banner (Soft Apricot Tint)
-              _buildActionRequiredBanner(context, isDark),
-              const SizedBox(height: AppSpacing.xl),
+            // 3. Action Required Callout Banner (Soft Apricot Tint)
+            _buildActionRequiredBanner(context, isDark),
+            const SizedBox(height: AppSpacing.xl),
 
-              // Cases List Section Header
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text('Your Reported Cases', style: AppTypography.titleMedium(isDark)),
-                  Row(
+            // 4. Cases Section Header
+            Wrap(
+              alignment: WrapAlignment.spaceBetween,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              spacing: AppSpacing.md,
+              runSpacing: AppSpacing.sm,
+              children: [
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('My Submitted Cases', style: AppTypography.headlineSmall(isDark)),
+                    Text(
+                      'Manage active tickets, review investigation logs, and track milestone SLAs.',
+                      style: AppTypography.bodySmall(isDark),
+                    ),
+                  ],
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: isDark ? AppColors.darkSurfaceElevated : AppColors.lightSurfaceElevated,
+                    borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
+                    border: Border.all(color: isDark ? AppColors.darkBorder : AppColors.lightBorder),
+                  ),
+                  child: Row(
                     children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: isDark ? AppColors.darkSurfaceElevated : AppColors.lightSurfaceElevated,
-                          borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
-                          border: Border.all(color: isDark ? AppColors.darkBorder : AppColors.lightBorder),
+                      Icon(
+                        Icons.filter_list,
+                        size: 16,
+                        color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
+                      ),
+                      const SizedBox(width: 6),
+                      Text('All Cases (${caseState.cases.length})', style: AppTypography.labelSmall(isDark)),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: AppSpacing.md),
+
+            // 5. Data Table Grid (Enterprise Table with Row Hover)
+            NexusDataTable<CaseModel>(
+              columns: const [
+                NexusColumn(label: 'Case ID', width: 140),
+                NexusColumn(label: 'Subject & Description', flex: 3),
+                NexusColumn(label: 'Category', flex: 1),
+                NexusColumn(label: 'Status', width: 140),
+                NexusColumn(label: 'Milestone Progress', flex: 2),
+                NexusColumn(label: 'Actions', width: 110, alignment: Alignment.centerRight),
+              ],
+              items: caseState.cases,
+              isLoading: caseState.isLoading,
+              onRowTap: (item) => context.go('/cases/${item.id}/track'),
+              cellBuilder: (context, item, index) {
+                return [
+                  // Case ID with JetBrains Mono Capsule
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: isDark ? AppColors.darkSurfaceElevated : AppColors.lightSurfaceElevated,
+                      borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
+                      border: Border.all(color: isDark ? AppColors.darkBorder : AppColors.lightBorder),
+                    ),
+                    child: Text(item.id, style: AppTypography.codeSmall(isDark)),
+                  ),
+
+                  // Subject & Title
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        item.title,
+                        style: TextStyle(
+                          color: isDark ? AppColors.darkTextPrimary : AppColors.lightTextPrimary,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 13,
                         ),
-                        child: Row(
-                          children: [
-                            Icon(Icons.filter_list, size: 16, color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary),
-                            const SizedBox(width: 4),
-                            Text('All Cases (${caseState.cases.length})', style: AppTypography.labelSmall(isDark)),
-                          ],
-                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      Text(
+                        item.description,
+                        style: AppTypography.bodySmall(isDark).copyWith(fontSize: 12),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ],
                   ),
-                ],
-              ),
-              const SizedBox(height: AppSpacing.md),
 
-              // Cases Data List (Responsive Table or Cards)
-              _buildCasesList(context, isDark, caseState.cases),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  PreferredSizeWidget _buildAppBar(BuildContext context, WidgetRef ref, bool isDark, String userName) {
-    return AppBar(
-      backgroundColor: isDark ? AppColors.darkSurface : AppColors.lightSurface,
-      elevation: 0,
-      scrolledUnderElevation: 0,
-      bottom: PreferredSize(
-        preferredSize: const Size.fromHeight(1),
-        child: Container(color: isDark ? AppColors.darkBorder : AppColors.lightBorder, height: 1),
-      ),
-      title: Row(
-        children: [
-          Container(
-            width: 28,
-            height: 28,
-            decoration: BoxDecoration(
-              gradient: const LinearGradient(colors: [AppColors.accentPrimary, AppColors.aiLilac]),
-              borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
-            ),
-            child: const Center(
-              child: Text('N', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
-            ),
-          ),
-          const SizedBox(width: AppSpacing.sm),
-          Text('Nexus', style: AppTypography.titleMedium(isDark)),
-          const SizedBox(width: AppSpacing.sm),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-            decoration: BoxDecoration(
-              color: isDark ? AppColors.accentTintDark : AppColors.accentTintLight,
-              borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
-            ),
-            child: Text(
-              'Requester Portal',
-              style: TextStyle(
-                color: isDark ? AppColors.accentPrimaryDark : AppColors.accentPrimary,
-                fontSize: 11,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
-        ],
-      ),
-      actions: [
-        // Theme Toggle Button
-        IconButton(
-          icon: Icon(
-            isDark ? Icons.light_mode_outlined : Icons.dark_mode_outlined,
-            color: isDark ? AppColors.darkTextPrimary : AppColors.lightTextPrimary,
-            size: 20,
-          ),
-          onPressed: () {
-            ref.read(themeModeProvider.notifier).state =
-                isDark ? ThemeMode.light : ThemeMode.dark;
-          },
-        ),
-        // User Profile Avatar
-        Padding(
-          padding: const EdgeInsets.only(right: 16),
-          child: Row(
-            children: [
-              CircleAvatar(
-                radius: 16,
-                backgroundColor: isDark ? AppColors.accentTintDark : AppColors.accentTintLight,
-                child: Text(
-                  userName.isNotEmpty ? userName[0].toUpperCase() : 'U',
-                  style: TextStyle(
-                    color: isDark ? AppColors.accentPrimaryDark : AppColors.accentPrimary,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 14,
+                  // Category
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: isDark ? AppColors.accentTintDark : AppColors.accentTintLight,
+                      borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
+                    ),
+                    child: Text(
+                      item.categoryName ?? 'IT Support',
+                      style: TextStyle(
+                        color: isDark ? AppColors.accentPrimaryDark : AppColors.accentPrimary,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
                   ),
-                ),
-              ),
-              const SizedBox(width: AppSpacing.xs),
-              IconButton(
-                icon: const Icon(Icons.logout, size: 18),
-                onPressed: () {
-                  ref.read(authStateProvider.notifier).logout();
-                  context.go('/auth/login');
-                },
-              ),
-            ],
-          ),
+
+                  // Status Badge
+                  StatusBadge(status: item.status),
+
+                  // Milestone Progress Bar
+                  _buildMilestoneStepper(isDark, item.milestoneStep),
+
+                  // Action Button
+                  IconButton(
+                    icon: const Icon(Icons.arrow_forward, size: 16),
+                    color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
+                    onPressed: () => context.go('/cases/${item.id}/track'),
+                  ),
+                ];
+              },
+              mobileCardBuilder: (context, item, index) => _buildCaseCard(context, isDark, item),
+            ),
+            const SizedBox(height: AppSpacing.xxl),
+          ],
         ),
-      ],
+      ),
     );
   }
 
@@ -212,31 +283,36 @@ class RequesterDashboardScreen extends ConsumerWidget {
     final kpis = [
       KpiCard(
         title: 'Active Cases',
-        value: '${stats?.activeCases ?? 3}',
-        subtitle: 'In triage & investigation',
+        value: '${stats?.activeCases ?? 3} Open',
+        subtitle: '1 Investigating • 2 Triage',
         icon: Icons.pending_actions_outlined,
         accentColor: isDark ? AppColors.statusTriageTextDark : AppColors.statusTriageTextLight,
+        showSparkline: true,
       ),
       KpiCard(
         title: 'Awaiting Your Reply',
-        value: '${stats?.awaitingReply ?? 1}',
-        subtitle: 'Operator requested info',
-        icon: Icons.mark_chat_unread_outlined,
+        value: '${stats?.awaitingReply ?? 1} Urgent',
+        subtitle: 'Operator requested log file',
+        icon: Icons.mark_email_unread_outlined,
         accentColor: isDark ? AppColors.statusWaitingTextDark : AppColors.statusWaitingTextLight,
+        valueColor: isDark ? AppColors.statusWaitingTextDark : AppColors.statusWaitingTextLight,
+        showSparkline: true,
       ),
       KpiCard(
         title: 'Resolved Cases',
-        value: '${stats?.resolvedCount ?? 14}',
-        subtitle: 'Successfully closed',
+        value: '${stats?.resolvedCount ?? 14} Closed',
+        subtitle: '100% verified resolution',
         icon: Icons.task_alt_outlined,
         accentColor: isDark ? AppColors.statusClosedTextDark : AppColors.statusClosedTextLight,
+        showSparkline: true,
       ),
       KpiCard(
         title: 'Avg. Turnaround',
-        value: '${stats?.avgTurnaroundHours ?? 4.2}h',
-        subtitle: 'Resolution SLA pace',
+        value: '${stats?.avgTurnaroundHours ?? 4.2} hrs',
+        subtitle: '98% within SLA window',
         icon: Icons.speed_outlined,
-        accentColor: isDark ? AppColors.accentPrimaryDark : AppColors.accentPrimary,
+        accentColor: isDark ? AppColors.statusReportedTextDark : AppColors.statusReportedTextLight,
+        showSparkline: true,
       ),
     ];
 
@@ -266,22 +342,24 @@ class RequesterDashboardScreen extends ConsumerWidget {
 
   Widget _buildActionRequiredBanner(BuildContext context, bool isDark) {
     return Container(
-      padding: const EdgeInsets.all(AppSpacing.cardPaddingMobile),
+      padding: const EdgeInsets.all(AppSpacing.md),
       decoration: BoxDecoration(
         color: isDark ? AppColors.statusWaitingBgDark : AppColors.statusWaitingBgLight,
-        borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
+        borderRadius: BorderRadius.circular(AppSpacing.radiusXl),
         border: Border.all(
-          color: (isDark ? AppColors.statusWaitingTextDark : AppColors.statusWaitingTextLight).withOpacity(0.3),
+          color: (isDark ? AppColors.statusWaitingTextDark : AppColors.statusWaitingTextLight).withValues(alpha: 0.4),
         ),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           Container(
-            padding: const EdgeInsets.all(8),
+            width: 40,
+            height: 40,
             decoration: BoxDecoration(
               color: isDark ? AppColors.darkSurface : AppColors.lightSurface,
               shape: BoxShape.circle,
+              boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 4)],
             ),
             child: Icon(
               Icons.priority_high,
@@ -294,72 +372,70 @@ class RequesterDashboardScreen extends ConsumerWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(
+                Wrap(
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  spacing: AppSpacing.xs,
+                  runSpacing: 2,
                   children: [
-                    Text(
-                      'Action Required: NEX-2026-0042',
-                      style: TextStyle(
-                        color: isDark ? AppColors.statusWaitingTextDark : AppColors.statusWaitingTextLight,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 14,
-                      ),
-                    ),
-                    const SizedBox(width: AppSpacing.sm),
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
                       decoration: BoxDecoration(
                         color: isDark ? AppColors.darkSurface : AppColors.lightSurface,
                         borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
                       ),
-                      child: Text('Awaiting Logs', style: AppTypography.labelSmall(isDark)),
+                      child: Text('NEX-2026-0042', style: AppTypography.codeSmall(isDark)),
+                    ),
+                    Text(
+                      'needs your immediate attention',
+                      style: TextStyle(
+                        color: isDark ? AppColors.darkTextPrimary : AppColors.lightTextPrimary,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 13,
+                      ),
                     ),
                   ],
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  'Lead Operator Elena Vance requested system VPN connection log files to diagnose gateway reset.',
+                  'Operator Elena Vance requested your VPN / Envoy debug client logs to trace proxy disconnection.',
                   style: AppTypography.bodySmall(isDark),
                 ),
               ],
             ),
           ),
           const SizedBox(width: AppSpacing.md),
-          NexusButton(
-            text: 'Reply Now',
-            icon: Icons.reply,
-            height: 36,
-            onPressed: () {
-              // Navigate to track screen
-            },
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              OutlinedButton(
+                onPressed: () => context.go('/cases/NEX-2026-0042/track'),
+                style: OutlinedButton.styleFrom(
+                  side: BorderSide(color: isDark ? AppColors.darkBorder : AppColors.lightBorder),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppSpacing.radiusMd)),
+                  backgroundColor: isDark ? AppColors.darkSurface : AppColors.lightSurface,
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                ),
+                child: Text('View Case', style: AppTypography.bodySmall(isDark).copyWith(fontWeight: FontWeight.w600)),
+              ),
+              const SizedBox(width: AppSpacing.xs),
+              NexusButton(
+                text: 'Reply & Upload Log',
+                icon: Icons.upload_file,
+                height: 36,
+                onPressed: () => context.go('/cases/NEX-2026-0042/track'),
+              ),
+            ],
           ),
         ],
       ),
     );
   }
 
-  Widget _buildCasesList(BuildContext context, bool isDark, List<CaseModel> cases) {
-    if (cases.isEmpty) {
-      return Container(
-        padding: const EdgeInsets.all(AppSpacing.xxl),
-        decoration: BoxDecoration(
-          color: isDark ? AppColors.darkSurface : AppColors.lightSurface,
-          borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
-          border: Border.all(color: isDark ? AppColors.darkBorder : AppColors.lightBorder),
-        ),
-        child: const Center(child: Text('No cases reported yet.')),
-      );
-    }
-
-    return Column(
-      children: cases.map((c) => _buildCaseCard(context, isDark, c)).toList(),
-    );
-  }
-
   Widget _buildCaseCard(BuildContext context, bool isDark, CaseModel item) {
-    final formattedDate = DateFormat('MMM dd, yyyy • hh:mm a').format(item.createdAt);
+    final formattedDate = DateFormat('MMM dd, yyyy').format(item.createdAt);
 
     return Container(
-      margin: const EdgeInsets.only(bottom: AppSpacing.md),
+      margin: const EdgeInsets.only(bottom: AppSpacing.sm),
       padding: const EdgeInsets.all(AppSpacing.cardPaddingMobile),
       decoration: BoxDecoration(
         color: isDark ? AppColors.darkSurface : AppColors.lightSurface,
@@ -369,78 +445,40 @@ class RequesterDashboardScreen extends ConsumerWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Top row: ID, Category, Date, Status
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                    decoration: BoxDecoration(
-                      color: isDark ? AppColors.darkSurfaceElevated : AppColors.lightSurfaceElevated,
-                      borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
-                      border: Border.all(color: isDark ? AppColors.darkBorder : AppColors.lightBorder),
-                    ),
-                    child: Text(item.id, style: AppTypography.codeSmall(isDark)),
-                  ),
-                  const SizedBox(width: AppSpacing.sm),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                    decoration: BoxDecoration(
-                      color: isDark ? AppColors.accentTintDark : AppColors.accentTintLight,
-                      borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
-                    ),
-                    child: Text(
-                      item.categoryName ?? 'IT Support',
-                      style: TextStyle(
-                        color: isDark ? AppColors.accentPrimaryDark : AppColors.accentPrimary,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ),
-                ],
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                decoration: BoxDecoration(
+                  color: isDark ? AppColors.darkSurfaceElevated : AppColors.lightSurfaceElevated,
+                  borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
+                ),
+                child: Text(item.id, style: AppTypography.codeSmall(isDark)),
               ),
               StatusBadge(status: item.status),
             ],
           ),
           const SizedBox(height: AppSpacing.sm),
-
-          // Title
           Text(item.title, style: AppTypography.titleMedium(isDark)),
-          const SizedBox(height: 4),
-
-          // Description preview
+          const SizedBox(height: 2),
           Text(
             item.description,
             style: AppTypography.bodySmall(isDark),
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
           ),
-          const SizedBox(height: AppSpacing.md),
-
-          // Milestone Stepper Bar (4 dots)
-          _buildMilestoneStepper(isDark, item.milestoneStep),
           const SizedBox(height: AppSpacing.sm),
-
-          // Footer info
+          _buildMilestoneStepper(isDark, item.milestoneStep),
+          const SizedBox(height: AppSpacing.xs),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                'Reported on $formattedDate',
-                style: AppTypography.labelSmall(isDark),
+              Text('Reported: $formattedDate', style: AppTypography.labelSmall(isDark)),
+              TextButton(
+                onPressed: () => context.go('/cases/${item.id}/track'),
+                child: const Text('Track Details ➔', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
               ),
-              if (item.assignedOperatorName != null)
-                Text(
-                  'Assigned to: ${item.assignedOperatorName}',
-                  style: TextStyle(
-                    color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
             ],
           ),
         ],
@@ -449,7 +487,7 @@ class RequesterDashboardScreen extends ConsumerWidget {
   }
 
   Widget _buildMilestoneStepper(bool isDark, int currentStep) {
-    final steps = ['Reported', 'In Progress', 'Resolution Proposed', 'Closed'];
+    final steps = ['Reported', 'In Progress', 'Resolved', 'Closed'];
 
     return Row(
       children: List.generate(steps.length * 2 - 1, (index) {
@@ -467,30 +505,25 @@ class RequesterDashboardScreen extends ConsumerWidget {
         } else {
           final stepNum = (index ~/ 2) + 1;
           final isDone = currentStep >= stepNum;
-          final isCurrent = currentStep == stepNum;
 
-          return Row(
-            children: [
-              Container(
-                width: 16,
-                height: 16,
-                decoration: BoxDecoration(
-                  color: isDone
-                      ? (isDark ? AppColors.accentPrimaryDark : AppColors.accentPrimary)
-                      : (isDark ? AppColors.darkSurfaceElevated : AppColors.lightSurfaceElevated),
-                  shape: BoxShape.circle,
-                  border: Border.all(
-                    color: isDone
-                        ? (isDark ? AppColors.accentPrimaryDark : AppColors.accentPrimary)
-                        : (isDark ? AppColors.darkBorder : AppColors.lightBorder),
-                    width: 2,
-                  ),
-                ),
-                child: isDone
-                    ? const Icon(Icons.check, size: 10, color: Colors.white)
-                    : null,
+          return Container(
+            width: 14,
+            height: 14,
+            decoration: BoxDecoration(
+              color: isDone
+                  ? (isDark ? AppColors.accentPrimaryDark : AppColors.accentPrimary)
+                  : (isDark ? AppColors.darkSurfaceElevated : AppColors.lightSurfaceElevated),
+              shape: BoxShape.circle,
+              border: Border.all(
+                color: isDone
+                    ? (isDark ? AppColors.accentPrimaryDark : AppColors.accentPrimary)
+                    : (isDark ? AppColors.darkBorder : AppColors.lightBorder),
+                width: 1.5,
               ),
-            ],
+            ),
+            child: isDone
+                ? const Icon(Icons.check, size: 8, color: Colors.white)
+                : null,
           );
         }
       }),

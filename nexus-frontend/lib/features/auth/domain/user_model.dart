@@ -18,16 +18,16 @@ class UserModel {
   });
 
   bool get isRequester => roles.contains('REQUESTER');
-  bool get isOperator => roles.contains('CASE_OPERATOR');
+  bool get isOperator => roles.contains('OPERATOR') || roles.contains('CASE_OPERATOR');
   bool get isTeamLead => roles.contains('TEAM_LEAD');
   bool get isManager => roles.contains('MANAGER');
-  bool get isAdmin => roles.contains('ADMINISTRATOR') || roles.contains('ADMIN');
+  bool get isAdmin => roles.contains('ADMIN') || roles.contains('ADMINISTRATOR');
 
   String get primaryRole {
-    if (isAdmin) return 'ADMINISTRATOR';
+    if (isAdmin) return 'ADMIN';
     if (isManager) return 'MANAGER';
     if (isTeamLead) return 'TEAM_LEAD';
-    if (isOperator) return 'CASE_OPERATOR';
+    if (isOperator) return 'OPERATOR';
     return 'REQUESTER';
   }
 

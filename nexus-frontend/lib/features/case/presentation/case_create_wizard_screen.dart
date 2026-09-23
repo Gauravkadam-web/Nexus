@@ -4,8 +4,11 @@ import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_typography.dart';
+import '../../../core/widgets/app_shell.dart';
 import '../../../core/widgets/nexus_button.dart';
 import '../../../core/widgets/responsive_layout.dart';
+import '../../admin/data/admin_api.dart';
+import '../../admin/domain/admin_models.dart';
 import 'case_state_provider.dart';
 
 class CaseCreateWizardScreen extends ConsumerStatefulWidget {
@@ -19,22 +22,40 @@ class _CaseCreateWizardScreenState extends ConsumerState<CaseCreateWizardScreen>
   final _titleController = TextEditingController();
   final _descriptionController = TextEditingController();
 
-  String _selectedCategory = 'Network & VPN';
-  String _selectedCategoryId = 'cat-1';
+  String _selectedCategoryId = '33333333-3333-3333-3333-333333333331';
   String _selectedSeverity = 'MEDIUM';
-  final List<String> _attachedFiles = ['system_error_trace.log', 'vpn_screenshot.png'];
+  final List<String> _attachedFiles = ['system_error_trace.log'];
   bool _isSubmitting = false;
   String? _errorMessage;
 
-  final categories = [
-    ('IT Support', 'cat-it'),
-    ('Network & VPN', 'cat-net'),
-    ('Security & Access', 'cat-sec'),
-    ('Software & License', 'cat-soft'),
-    ('Facilities & Hardware', 'cat-fac'),
-  ];
+  List<CategoryModel> _availableCategories = [];
 
   final severities = ['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadCategories();
+  }
+
+  Future<void> _loadCategories() async {
+    final res = await AdminApi().getCategories();
+    if (res.success && res.data != null && res.data!.isNotEmpty && mounted) {
+      setState(() {
+        _availableCategories = res.data!;
+        _selectedCategoryId = _availableCategories.first.id;
+      });
+    } else {
+      setState(() {
+        _availableCategories = const [
+          CategoryModel(id: '33333333-3333-3333-3333-333333333331', name: 'Network & VPN Infrastructure'),
+          CategoryModel(id: '33333333-3333-3333-3333-333333333332', name: 'Software Access & Licensing'),
+          CategoryModel(id: '33333333-3333-3333-3333-333333333333', name: 'Hardware & IT Workstations'),
+          CategoryModel(id: '33333333-3333-3333-3333-333333333334', name: 'Cloud Infrastructure & SRE'),
+        ];
+      });
+    }
+  }
 
   @override
   void dispose() {
@@ -68,9 +89,18 @@ class _CaseCreateWizardScreenState extends ConsumerState<CaseCreateWizardScreen>
 
     if (success && mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Case submitted successfully!')),
+        const SnackBar(
+          backgroundColor: Color(0xFF065F46),
+          content: Row(
+            children: [
+              Icon(Icons.check_circle_outline, color: Colors.white, size: 20),
+              SizedBox(width: 8),
+              Text('Support case submitted successfully!'),
+            ],
+          ),
+        ),
       );
-      context.go('/dashboard');
+      context.go('/dashboard/requester');
     }
   }
 
@@ -78,37 +108,22 @@ class _CaseCreateWizardScreenState extends ConsumerState<CaseCreateWizardScreen>
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    return Scaffold(
-      backgroundColor: isDark ? AppColors.darkCanvas : AppColors.lightCanvas,
-      appBar: AppBar(
-        backgroundColor: isDark ? AppColors.darkSurface : AppColors.lightSurface,
-        elevation: 0,
-        scrolledUnderElevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
-          onPressed: () => context.go('/dashboard'),
+    return AppShell(
+      currentPath: '/cases/new',
+      title: 'Report a Support Case',
+      child: SingleChildScrollView(
+        padding: EdgeInsets.symmetric(
+          horizontal: ResponsiveLayout.isMobile(context)
+              ? AppSpacing.mobileGutter
+              : AppSpacing.desktopGutter,
+          vertical: AppSpacing.lg,
         ),
-        title: Text('Report a Support Case', style: AppTypography.titleMedium(isDark)),
-        bottom: PreferredSize(
-          preferredSize: const Size.fromHeight(1),
-          child: Container(color: isDark ? AppColors.darkBorder : AppColors.lightBorder, height: 1),
-        ),
-      ),
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: EdgeInsets.symmetric(
-            horizontal: ResponsiveLayout.isMobile(context)
-                ? AppSpacing.mobileGutter
-                : AppSpacing.desktopGutter,
-            vertical: AppSpacing.lg,
-          ),
-          child: Center(
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 1280),
-              child: ResponsiveLayout(
-                mobile: (context, constraints) => _buildMobileLayout(context, isDark),
-                desktop: (context, constraints) => _buildDesktopLayout(context, isDark),
-              ),
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 1280),
+            child: ResponsiveLayout(
+              mobile: (context, constraints) => _buildMobileLayout(context, isDark),
+              desktop: (context, constraints) => _buildDesktopLayout(context, isDark),
             ),
           ),
         ),
@@ -120,13 +135,11 @@ class _CaseCreateWizardScreenState extends ConsumerState<CaseCreateWizardScreen>
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Main Form Column (65%)
         Expanded(
           flex: 65,
           child: _buildMainForm(context, isDark),
         ),
         const SizedBox(width: AppSpacing.xl),
-        // Helper Panel Column (35%)
         Expanded(
           flex: 35,
           child: _buildHelperPanel(context, isDark),
@@ -164,7 +177,6 @@ class _CaseCreateWizardScreenState extends ConsumerState<CaseCreateWizardScreen>
           ),
           const SizedBox(height: AppSpacing.lg),
 
-          // Error Message Banner
           if (_errorMessage != null) ...[
             Container(
               padding: const EdgeInsets.all(AppSpacing.sm),
@@ -195,7 +207,6 @@ class _CaseCreateWizardScreenState extends ConsumerState<CaseCreateWizardScreen>
             const SizedBox(height: AppSpacing.md),
           ],
 
-          // Case Title Input with Character Counter
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
@@ -210,25 +221,24 @@ class _CaseCreateWizardScreenState extends ConsumerState<CaseCreateWizardScreen>
           TextField(
             controller: _titleController,
             maxLength: 100,
-            buildCounter: (_, {required currentLength, isFocused, maxLength}) => null,
+            buildCounter: (_, {required currentLength, required isFocused, maxLength}) => null,
             onChanged: (_) => setState(() {}),
             decoration: const InputDecoration(
-              hintText: 'e.g. Cannot access staging VPN gateway from macOS',
+              hintText: 'e.g. Authentication Gateway Timeout during SSO federation',
               prefixIcon: Icon(Icons.title, size: 20),
             ),
           ),
           const SizedBox(height: AppSpacing.md),
 
-          // Category Chips Selector
           Text('Category *', style: AppTypography.titleSmall(isDark)),
           const SizedBox(height: AppSpacing.xs),
           Wrap(
             spacing: AppSpacing.sm,
             runSpacing: AppSpacing.sm,
-            children: categories.map((cat) {
-              final isSelected = _selectedCategory == cat.$1;
+            children: _availableCategories.map((cat) {
+              final isSelected = _selectedCategoryId == cat.id;
               return ChoiceChip(
-                label: Text(cat.$1),
+                label: Text(cat.name),
                 selected: isSelected,
                 selectedColor: isDark ? AppColors.accentTintDark : AppColors.accentTintLight,
                 backgroundColor: isDark ? AppColors.darkSurfaceElevated : AppColors.lightSurfaceElevated,
@@ -247,8 +257,7 @@ class _CaseCreateWizardScreenState extends ConsumerState<CaseCreateWizardScreen>
                 onSelected: (selected) {
                   if (selected) {
                     setState(() {
-                      _selectedCategory = cat.$1;
-                      _selectedCategoryId = cat.$2;
+                      _selectedCategoryId = cat.id;
                     });
                   }
                 },
@@ -257,7 +266,6 @@ class _CaseCreateWizardScreenState extends ConsumerState<CaseCreateWizardScreen>
           ),
           const SizedBox(height: AppSpacing.lg),
 
-          // Severity Segmented Control
           Text('Severity Level *', style: AppTypography.titleSmall(isDark)),
           const SizedBox(height: AppSpacing.xs),
           Row(
@@ -290,7 +298,7 @@ class _CaseCreateWizardScreenState extends ConsumerState<CaseCreateWizardScreen>
                       padding: const EdgeInsets.symmetric(vertical: 10),
                       decoration: BoxDecoration(
                         color: isSelected
-                            ? badgeColor.withOpacity(0.15)
+                            ? badgeColor.withValues(alpha: 0.15)
                             : (isDark ? AppColors.darkSurfaceElevated : AppColors.lightSurfaceElevated),
                         borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
                         border: Border.all(
@@ -316,7 +324,6 @@ class _CaseCreateWizardScreenState extends ConsumerState<CaseCreateWizardScreen>
           ),
           const SizedBox(height: AppSpacing.lg),
 
-          // Markdown Description Input
           Text('Detailed Description *', style: AppTypography.titleSmall(isDark)),
           const SizedBox(height: AppSpacing.xs),
           TextField(
@@ -329,7 +336,6 @@ class _CaseCreateWizardScreenState extends ConsumerState<CaseCreateWizardScreen>
           ),
           const SizedBox(height: AppSpacing.lg),
 
-          // File Upload Dropzone
           Text('Attachments & Evidence', style: AppTypography.titleSmall(isDark)),
           const SizedBox(height: AppSpacing.xs),
           Container(
@@ -350,7 +356,7 @@ class _CaseCreateWizardScreenState extends ConsumerState<CaseCreateWizardScreen>
                   color: isDark ? AppColors.accentPrimaryDark : AppColors.accentPrimary,
                 ),
                 const SizedBox(height: AppSpacing.xs),
-                Text('Drag & drop logs, screenshots, or PDF files', style: AppTypography.bodySmall(isDark)),
+                Text('Logs, diagnostic traces, and error screenshots attached', style: AppTypography.bodySmall(isDark)),
                 const SizedBox(height: AppSpacing.sm),
                 Wrap(
                   spacing: AppSpacing.xs,
@@ -367,14 +373,13 @@ class _CaseCreateWizardScreenState extends ConsumerState<CaseCreateWizardScreen>
           ),
           const SizedBox(height: AppSpacing.xl),
 
-          // Bottom Actions
           Row(
             mainAxisAlignment: MainAxisAlignment.end,
             children: [
               NexusButton(
                 text: 'Cancel / Draft',
                 variant: NexusButtonVariant.ghost,
-                onPressed: () => context.go('/dashboard'),
+                onPressed: () => context.go('/dashboard/requester'),
               ),
               const SizedBox(width: AppSpacing.md),
               NexusButton(
@@ -393,7 +398,6 @@ class _CaseCreateWizardScreenState extends ConsumerState<CaseCreateWizardScreen>
   Widget _buildHelperPanel(BuildContext context, bool isDark) {
     return Column(
       children: [
-        // AI Proactive Tips Card (Soft Pastel Lilac)
         Container(
           padding: const EdgeInsets.all(AppSpacing.cardPaddingDesktop),
           decoration: BoxDecoration(
@@ -409,7 +413,7 @@ class _CaseCreateWizardScreenState extends ConsumerState<CaseCreateWizardScreen>
                   Icon(Icons.auto_awesome, size: 18, color: isDark ? AppColors.aiLilacDark : AppColors.aiLilac),
                   const SizedBox(width: 6),
                   Text(
-                    '✨ PROACTIVE AI GUIDELINES',
+                    'PROACTIVE AI GUIDELINES',
                     style: TextStyle(
                       color: isDark ? AppColors.aiLilacDark : AppColors.aiLilac,
                       fontSize: 11,

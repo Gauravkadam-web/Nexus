@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
-import '../../../core/theme/app_typography.dart';
-import '../../../core/widgets/nexus_button.dart';
+import '../../../core/widgets/app_shell.dart';
 import '../../../core/widgets/responsive_layout.dart';
-import '../../../core/widgets/status_badge.dart';
+import '../../../core/widgets/state_view_helpers.dart';
+import '../data/audit_api.dart';
+import '../domain/audit_model.dart';
 
 /// SCR-17: Audit Trail & Immutable Timeline Explorer Screen
 /// Cryptographically sealed chronological event ledger for SOC2 Type II / ISO 27001 compliance,
@@ -21,114 +21,47 @@ class AuditTrailTimelineScreen extends ConsumerStatefulWidget {
 
 class _AuditTrailTimelineScreenState extends ConsumerState<AuditTrailTimelineScreen> {
   String _selectedRange = '7D';
-  int _currentNavIndex = 3; // Audit active
+  List<AuditLogModel> _logs = [];
+  bool _isLoading = false;
+  String? _errorMessage;
 
-  void _showFeedbackToast(String message, IconData icon, Color color) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        backgroundColor: const Color(0xFF131B2E),
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        content: Row(
-          children: [
-            Icon(icon, color: color, size: 20),
-            const SizedBox(width: AppSpacing.sm),
-            Expanded(
-              child: Text(
-                message,
-                style: AppTypography.bodySmall(context).copyWith(color: Colors.white),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
+  @override
+  void initState() {
+    super.initState();
+    _loadLogs();
+  }
+
+  Future<void> _loadLogs() async {
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+
+    final res = await AuditApi().getAuditLogs();
+    if (mounted) {
+      if (res.success && res.data != null) {
+        setState(() {
+          _logs = res.data!;
+          _isLoading = false;
+        });
+      } else {
+        setState(() {
+          _errorMessage = res.error ?? 'Failed to load audit trail';
+          _isLoading = false;
+        });
+      }
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFFAFAFC),
-      appBar: _buildAppBar(context),
-      body: SafeArea(
-        child: ResponsiveLayout(
-          mobileBody: _buildMobileBody(context),
-          desktopBody: _buildDesktopBody(context),
-        ),
+    return AppShell(
+      currentPath: '/admin/audit-logs',
+      title: 'Audit Trail & Ledger',
+      child: ResponsiveLayout(
+        mobileBody: _buildMobileBody(context),
+        desktopBody: _buildDesktopBody(context),
       ),
-      bottomNavigationBar: _buildBottomNav(context),
-    );
-  }
-
-  PreferredSizeWidget _buildAppBar(BuildContext context) {
-    return AppBar(
-      backgroundColor: Colors.white.withOpacity(0.9),
-      elevation: 0,
-      scrolledUnderElevation: 1,
-      titleSpacing: AppSpacing.md,
-      title: Row(
-        children: [
-          Container(
-            width: 32,
-            height: 32,
-            decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                colors: [Color(0xFF0D9488), Color(0xFF2DD4BF)],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: const Icon(Icons.history_edu, color: Colors.white, size: 18),
-          ),
-          const SizedBox(width: AppSpacing.sm),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                'Nexus AI',
-                style: AppTypography.bodySmall(context).copyWith(
-                  color: AppColors.textMuted,
-                  fontSize: 11,
-                  fontWeight: FontWeight.w600,
-                  letterSpacing: 0.5,
-                ),
-              ),
-              Text(
-                'Audit Ledger',
-                style: AppTypography.headlineSmall(context).copyWith(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.textPrimary,
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-      actions: [
-        IconButton(
-          icon: const Icon(Icons.download_outlined, color: AppColors.accentPrimary, size: 22),
-          tooltip: 'Export Ledger',
-          onPressed: () => _showFeedbackToast('Exporting cryptographically sealed JSON ledger', Icons.download, AppColors.accentPrimary),
-        ),
-        Padding(
-          padding: const EdgeInsets.only(right: AppSpacing.md),
-          child: CircleAvatar(
-            radius: 16,
-            backgroundColor: const Color(0xFFCCFBF1),
-            child: const Text(
-              'AU',
-              style: TextStyle(
-                color: Color(0xFF0D9488),
-                fontWeight: FontWeight.bold,
-                fontSize: 11,
-              ),
-            ),
-          ),
-        ),
-      ],
     );
   }
 
@@ -303,7 +236,7 @@ class _AuditTrailTimelineScreenState extends ConsumerState<AuditTrailTimelineScr
           ),
           Text(
             value,
-            style: TextStyle(
+            style: const TextStyle(
               fontSize: 20,
               fontWeight: FontWeight.bold,
               color: AppColors.textPrimary,
@@ -357,7 +290,7 @@ class _AuditTrailTimelineScreenState extends ConsumerState<AuditTrailTimelineScr
               isDense: true,
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(8),
-                borderSide: BorderSide(color: AppColors.borderLight),
+                borderSide: const BorderSide(color: AppColors.borderLight),
               ),
             ),
           ),
@@ -393,41 +326,59 @@ class _AuditTrailTimelineScreenState extends ConsumerState<AuditTrailTimelineScr
   }
 
   Widget _buildTimelineEventsList(BuildContext context) {
+    if (_isLoading) {
+      return const NexusLoadingView(message: 'Verifying cryptographic Merkle ledger & loading events...');
+    }
+    if (_errorMessage != null) {
+      return NexusErrorView(
+        message: _errorMessage!,
+        onRetry: _loadLogs,
+      );
+    }
+    if (_logs.isEmpty) {
+      return const NexusEmptyView(
+        title: 'No Audit Records Found',
+        message: 'No events have been logged for the selected timeframe.',
+        icon: Icons.history_toggle_off,
+      );
+    }
+
     return Column(
-      children: [
-        _buildEventCard(
-          height: '#89211',
-          eventType: 'SLA OVERRIDE',
-          title: 'SLA Priority Escalated: MEDIUM → P1 CRITICAL',
-          timestamp: '2026-03-30 14:22:01 UTC',
-          actor: 'Nexus AI Triage (Accepted by Elena Vance)',
-          diffText: '{"path": "/severity", "value": "P1_CRITICAL", "confidence": 0.984}',
-          eventColor: const Color(0xFFE11D48),
-          eventBg: const Color(0xFFFFE4E6),
-        ),
-        const SizedBox(height: AppSpacing.sm),
-        _buildEventCard(
-          height: '#89204',
-          eventType: 'REBALANCE',
-          title: 'Auto-Routing Delegation: 2 Cases to Sarah Jenkins',
-          timestamp: '2026-03-30 13:45:10 UTC',
-          actor: 'Nexus AI Workload Engine (Confirmed by Elena Vance)',
-          diffText: '{"action": "REBALANCE", "assignedTo": "sarah.jenkins", "recoveredMins": 18}',
-          eventColor: const Color(0xFF9333EA),
-          eventBg: const Color(0xFFFAF5FF),
-        ),
-        const SizedBox(height: AppSpacing.sm),
-        _buildEventCard(
-          height: '#89198',
-          eventType: 'RESOLUTION',
-          title: 'Case Resolution Proposed with KEDB Link',
-          timestamp: '2026-03-30 11:12:30 UTC',
-          actor: 'David Ross (Senior SRE)',
-          diffText: '{"status": "RESOLUTION_PROPOSED", "kedbId": "PRB-2026-0031"}',
-          eventColor: const Color(0xFF0D9488),
-          eventBg: const Color(0xFFCCFBF1),
-        ),
-      ],
+      children: _logs.map((log) {
+        Color eventColor = const Color(0xFF0D9488);
+        Color eventBg = const Color(0xFFCCFBF1);
+
+        final actionUpper = log.action.toUpperCase();
+        if (actionUpper.contains('SLA') || actionUpper.contains('ESCALAT') || actionUpper.contains('OVERRIDE')) {
+          eventColor = const Color(0xFFE11D48);
+          eventBg = const Color(0xFFFFE4E6);
+        } else if (actionUpper.contains('REBALANCE') || actionUpper.contains('ASSIGN') || actionUpper.contains('AI')) {
+          eventColor = const Color(0xFF9333EA);
+          eventBg = const Color(0xFFFAF5FF);
+        } else if (actionUpper.contains('CREATE') || actionUpper.contains('UPDATE')) {
+          eventColor = const Color(0xFF3B82F6);
+          eventBg = const Color(0xFFEFF6FF);
+        }
+
+        final shortId = log.id.length > 8 ? '#${log.id.substring(0, 8)}' : '#${log.id}';
+        final diffStr = log.details != null && log.details!.isNotEmpty
+            ? log.details.toString()
+            : '{"entityType": "${log.entityType}", "entityId": "${log.entityId}", "action": "${log.action}"}';
+
+        return Padding(
+          padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+          child: _buildEventCard(
+            height: shortId,
+            eventType: log.action,
+            title: '${log.entityType.toUpperCase()}: ${log.action}',
+            timestamp: '${log.createdAt.toIso8601String().replaceFirst('T', ' ').substring(0, 19)} UTC',
+            actor: log.actorEmail ?? (log.actorId.isNotEmpty ? 'Actor ${log.actorId.substring(0, 8)}' : 'System Automation'),
+            diffText: diffStr,
+            eventColor: eventColor,
+            eventBg: eventBg,
+          ),
+        );
+      }).toList(),
     );
   }
 
@@ -465,8 +416,8 @@ class _AuditTrailTimelineScreenState extends ConsumerState<AuditTrailTimelineScr
                   ),
                 ],
               ),
-              Row(
-                children: const [
+              const Row(
+                children: [
                   Icon(Icons.lock, size: 12, color: Color(0xFF0D9488)),
                   SizedBox(width: 4),
                   Text('SEALED', style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: Color(0xFF0D9488))),
@@ -485,48 +436,13 @@ class _AuditTrailTimelineScreenState extends ConsumerState<AuditTrailTimelineScr
             child: Text(diffText, style: const TextStyle(fontFamily: 'monospace', fontSize: 10, color: AppColors.textPrimary)),
           ),
           const SizedBox(height: 6),
-          Row(
-            children: const [
+          const Row(
+            children: [
               Icon(Icons.fingerprint, size: 12, color: Color(0xFF0D9488)),
               SizedBox(width: 4),
               Text('SHA-256 Valid • ED25519 HSM Signed', style: TextStyle(fontSize: 9, color: AppColors.textMuted)),
             ],
           ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildBottomNav(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        border: Border(top: BorderSide(color: AppColors.borderLight)),
-      ),
-      child: BottomNavigationBar(
-        currentIndex: _currentNavIndex,
-        onTap: (index) {
-          setState(() => _currentNavIndex = index);
-          if (index == 0) {
-            context.go('/dashboard/team-lead');
-          } else if (index == 1) {
-            context.go('/cases');
-          } else if (index == 2) {
-            context.go('/admin/policies');
-          } else if (index == 3) {
-            // Already on audit
-          }
-        },
-        selectedItemColor: AppColors.accentPrimary,
-        unselectedItemColor: AppColors.textSecondary,
-        type: BottomNavigationBarType.fixed,
-        selectedFontSize: 11,
-        unselectedFontSize: 11,
-        items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.dashboard_outlined), label: 'Lead'),
-          BottomNavigationBarItem(icon: Icon(Icons.inbox_outlined), label: 'Feed'),
-          BottomNavigationBarItem(icon: Icon(Icons.policy_outlined), label: 'Policies'),
-          BottomNavigationBarItem(icon: Icon(Icons.history_edu_outlined), label: 'Audit'),
         ],
       ),
     );

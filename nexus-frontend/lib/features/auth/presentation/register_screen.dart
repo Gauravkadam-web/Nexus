@@ -5,7 +5,6 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../core/widgets/nexus_button.dart';
-import '../../../core/widgets/responsive_layout.dart';
 import 'auth_state_provider.dart';
 
 class RegisterScreen extends ConsumerStatefulWidget {
@@ -105,7 +104,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                   border: Border.all(color: isDark ? AppColors.darkBorder : AppColors.lightBorder),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withOpacity(isDark ? 0.2 : 0.03),
+                      color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.03),
                       blurRadius: 20,
                       offset: const Offset(0, 8),
                     ),
@@ -222,7 +221,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                               Text('Organization', style: AppTypography.titleSmall(isDark)),
                               const SizedBox(height: AppSpacing.xs),
                               DropdownButtonFormField<String>(
-                                value: _selectedOrg,
+                                initialValue: _selectedOrg,
                                 decoration: const InputDecoration(
                                   contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 12),
                                 ),
@@ -244,7 +243,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                               Text('Initial Role', style: AppTypography.titleSmall(isDark)),
                               const SizedBox(height: AppSpacing.xs),
                               DropdownButtonFormField<String>(
-                                value: _selectedRole,
+                                initialValue: _selectedRole,
                                 decoration: const InputDecoration(
                                   contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 12),
                                 ),
