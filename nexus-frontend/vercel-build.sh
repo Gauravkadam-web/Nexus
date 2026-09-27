@@ -20,7 +20,7 @@ echo "=== [3/4] Resolving Dependencies ==="
 flutter config --enable-web
 flutter pub get
 
-API_URL="${API_BASE_URL:-https://nexus-backend.onrender.com/api/v1/}"
+API_URL="${API_BASE_URL:-https://nexus-h44p.onrender.com/api/v1/}"
 echo "=== [4/4] Compiling Flutter Web (Release) with API_BASE_URL: $API_URL ==="
 flutter build web --release --dart-define=API_BASE_URL="$API_URL"
 
