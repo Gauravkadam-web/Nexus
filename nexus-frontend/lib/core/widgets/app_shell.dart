@@ -61,7 +61,14 @@ class _AppShellState extends ConsumerState<AppShell> {
             children: [
               _buildBrandMark(isDark, size: 28),
               const SizedBox(width: AppSpacing.sm),
-              Text(widget.title ?? 'Nexus', style: AppTypography.headlineSmall(isDark)),
+              Expanded(
+                child: Text(
+                  widget.title ?? 'Nexus',
+                  style: AppTypography.headlineSmall(isDark),
+                  overflow: TextOverflow.ellipsis,
+                  maxLines: 1,
+                ),
+              ),
             ],
           ),
           actions: [
@@ -81,6 +88,7 @@ class _AppShellState extends ConsumerState<AppShell> {
           ],
         ),
         body: widget.child,
+        bottomNavigationBar: _buildBottomNav(context, isDark, user),
       );
     }
 
@@ -640,7 +648,7 @@ class _AppShellState extends ConsumerState<AppShell> {
             activeIcon: Icons.insights,
             label: 'Executive Analytics',
             route: '/dashboard/manager',
-            isActive: path.startsWith('/dashboard/manager'),
+            isActive: path.startsWith('/dashboard/manager') || path.startsWith('/analytics'),
           ),
           _buildNavItem(
             context: context,
@@ -662,7 +670,7 @@ class _AppShellState extends ConsumerState<AppShell> {
             activeIcon: Icons.insights,
             label: 'Executive Analytics',
             route: '/dashboard/manager',
-            isActive: path.startsWith('/dashboard/manager'),
+            isActive: path.startsWith('/dashboard/manager') || path.startsWith('/analytics'),
           ),
           _buildNavItem(
             context: context,
@@ -681,6 +689,15 @@ class _AppShellState extends ConsumerState<AppShell> {
             label: 'SLA Risk Radar',
             route: '/sla/risk-console',
             isActive: path.startsWith('/sla/risk-console'),
+          ),
+          _buildNavItem(
+            context: context,
+            isDark: isDark,
+            icon: Icons.inbox_outlined,
+            activeIcon: Icons.inbox,
+            label: 'Triage Workstation',
+            route: '/dashboard/operator/triage',
+            isActive: path.startsWith('/dashboard/operator') || path == '/cases',
           ),
           _buildNavItem(
             context: context,
@@ -711,7 +728,7 @@ class _AppShellState extends ConsumerState<AppShell> {
             activeIcon: Icons.inbox,
             label: 'Triage Workstation',
             route: '/dashboard/operator/triage',
-            isActive: path.startsWith('/dashboard/operator'),
+            isActive: path.startsWith('/dashboard/operator') || path == '/cases',
           ),
           _buildNavItem(
             context: context,
@@ -721,6 +738,15 @@ class _AppShellState extends ConsumerState<AppShell> {
             label: 'SLA Risk Radar',
             route: '/sla/risk-console',
             isActive: path.startsWith('/sla/risk-console'),
+          ),
+          _buildNavItem(
+            context: context,
+            isDark: isDark,
+            icon: Icons.troubleshoot_outlined,
+            activeIcon: Icons.troubleshoot,
+            label: 'Problem Management',
+            route: '/problems',
+            isActive: path.startsWith('/problems'),
           ),
           _buildNavItem(
             context: context,
@@ -742,7 +768,34 @@ class _AppShellState extends ConsumerState<AppShell> {
             activeIcon: Icons.inbox,
             label: 'Triage Workstation',
             route: '/dashboard/operator/triage',
-            isActive: path.startsWith('/dashboard/operator'),
+            isActive: path.startsWith('/dashboard/operator') || path == '/cases',
+          ),
+          _buildNavItem(
+            context: context,
+            isDark: isDark,
+            icon: Icons.terminal_outlined,
+            activeIcon: Icons.terminal,
+            label: 'Investigation Studio',
+            route: '/cases/66666666-6666-6666-6666-666666666661/investigation',
+            isActive: path.startsWith('/cases/') && path != '/cases/new',
+          ),
+          _buildNavItem(
+            context: context,
+            isDark: isDark,
+            icon: Icons.shield_outlined,
+            activeIcon: Icons.shield,
+            label: 'SLA Risk Radar',
+            route: '/sla/risk-console',
+            isActive: path.startsWith('/sla/risk-console'),
+          ),
+          _buildNavItem(
+            context: context,
+            isDark: isDark,
+            icon: Icons.troubleshoot_outlined,
+            activeIcon: Icons.troubleshoot,
+            label: 'Problem Management',
+            route: '/problems',
+            isActive: path.startsWith('/problems'),
           ),
           _buildNavItem(
             context: context,
@@ -779,6 +832,15 @@ class _AppShellState extends ConsumerState<AppShell> {
           _buildNavItem(
             context: context,
             isDark: isDark,
+            icon: Icons.timeline_outlined,
+            activeIcon: Icons.timeline,
+            label: 'Track My Issue',
+            route: '/cases/66666666-6666-6666-6666-666666666663/track',
+            isActive: path.contains('/track'),
+          ),
+          _buildNavItem(
+            context: context,
+            isDark: isDark,
             icon: Icons.notifications_outlined,
             activeIcon: Icons.notifications,
             label: 'Notifications',
@@ -811,4 +873,118 @@ class _AppShellState extends ConsumerState<AppShell> {
       ),
     );
   }
+
+  Widget _buildBottomNav(BuildContext context, bool isDark, dynamic user) {
+    final role = user?.primaryRole ?? user?.role ?? 'OPERATOR';
+    final path = widget.currentPath;
+
+    List<_BottomNavItem> items;
+    switch (role) {
+      case 'ADMIN':
+        items = [
+          _BottomNavItem(icon: Icons.group_outlined, activeIcon: Icons.group, label: 'Users', route: '/admin/users', isActive: path.startsWith('/admin/users')),
+          _BottomNavItem(icon: Icons.policy_outlined, activeIcon: Icons.policy, label: 'SLA', route: '/admin/policies', isActive: path.startsWith('/admin/policies')),
+          _BottomNavItem(icon: Icons.history_outlined, activeIcon: Icons.history, label: 'Audit', route: '/admin/audit-logs', isActive: path.startsWith('/admin/audit-logs')),
+          _BottomNavItem(icon: Icons.analytics_outlined, activeIcon: Icons.analytics, label: 'KPIs', route: '/dashboard/manager', isActive: path.startsWith('/dashboard/manager')),
+          _BottomNavItem(icon: Icons.notifications_outlined, activeIcon: Icons.notifications, label: 'Alerts', route: '/notifications', isActive: path.startsWith('/notifications')),
+        ];
+        break;
+      case 'MANAGER':
+      case 'TEAM_LEAD':
+        items = [
+          _BottomNavItem(icon: Icons.analytics_outlined, activeIcon: Icons.analytics, label: 'KPIs', route: '/dashboard/manager', isActive: path.startsWith('/dashboard/manager')),
+          _BottomNavItem(icon: Icons.group_work_outlined, activeIcon: Icons.group_work, label: 'Squad', route: '/dashboard/team-lead', isActive: path.startsWith('/dashboard/team-lead')),
+          _BottomNavItem(icon: Icons.radar_outlined, activeIcon: Icons.radar, label: 'Radar', route: '/sla/risk-console', isActive: path.startsWith('/sla/risk-console')),
+          _BottomNavItem(icon: Icons.report_problem_outlined, activeIcon: Icons.report_problem, label: 'Problems', route: '/problems', isActive: path.startsWith('/problems')),
+          _BottomNavItem(icon: Icons.notifications_outlined, activeIcon: Icons.notifications, label: 'Alerts', route: '/notifications', isActive: path.startsWith('/notifications')),
+        ];
+        break;
+      case 'REQUESTER':
+        items = [
+          _BottomNavItem(icon: Icons.dashboard_outlined, activeIcon: Icons.dashboard, label: 'Portal', route: '/dashboard/requester', isActive: path == '/dashboard/requester'),
+          _BottomNavItem(icon: Icons.add_circle_outline, activeIcon: Icons.add_circle, label: 'Report', route: '/cases/new', isActive: path.startsWith('/cases/new')),
+          _BottomNavItem(icon: Icons.timeline_outlined, activeIcon: Icons.timeline, label: 'Track', route: '/cases/66666666-6666-6666-6666-666666666663/track', isActive: path.contains('/track')),
+          _BottomNavItem(icon: Icons.notifications_outlined, activeIcon: Icons.notifications, label: 'Alerts', route: '/notifications', isActive: path.startsWith('/notifications')),
+          const _BottomNavItem(icon: Icons.person_outline, activeIcon: Icons.person, label: 'Profile', route: '/dashboard/requester', isActive: false),
+        ];
+        break;
+      case 'OPERATOR':
+      default:
+        items = [
+          _BottomNavItem(icon: Icons.inbox_outlined, activeIcon: Icons.inbox, label: 'Triage', route: '/dashboard/operator/triage', isActive: path.startsWith('/dashboard/operator/triage')),
+          _BottomNavItem(icon: Icons.dataset_outlined, activeIcon: Icons.dataset, label: 'Studio', route: '/cases/66666666-6666-6666-6666-666666666661/investigation', isActive: path.contains('/investigation') || path.contains('/collaboration') || path.contains('/copilot')),
+          _BottomNavItem(icon: Icons.radar_outlined, activeIcon: Icons.radar, label: 'Radar', route: '/sla/risk-console', isActive: path.startsWith('/sla/risk-console')),
+          _BottomNavItem(icon: Icons.report_problem_outlined, activeIcon: Icons.report_problem, label: 'Problems', route: '/problems', isActive: path.startsWith('/problems')),
+          _BottomNavItem(icon: Icons.notifications_outlined, activeIcon: Icons.notifications, label: 'Alerts', route: '/notifications', isActive: path.startsWith('/notifications')),
+        ];
+        break;
+    }
+
+    return Container(
+      decoration: BoxDecoration(
+        color: (isDark ? AppColors.darkSurface : AppColors.lightSurface).withValues(alpha: 0.95),
+        border: Border(
+          top: BorderSide(color: isDark ? AppColors.darkBorder : AppColors.lightBorder),
+        ),
+      ),
+      child: SafeArea(
+        top: false,
+        child: SizedBox(
+          height: 60,
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: items.map((item) {
+              const activeColor = AppColors.accentPrimary;
+              final inactiveColor = isDark ? AppColors.darkTextMuted : AppColors.lightTextMuted;
+              return Expanded(
+                child: InkWell(
+                  onTap: () {
+                    if (item.route.isNotEmpty) context.go(item.route);
+                  },
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        item.isActive ? item.activeIcon : item.icon,
+                        color: item.isActive ? activeColor : inactiveColor,
+                        size: 22,
+                      ),
+                      const SizedBox(height: 3),
+                      Text(
+                        item.label,
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: item.isActive ? FontWeight.w600 : FontWeight.w500,
+                          color: item.isActive ? activeColor : inactiveColor,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            }).toList(),
+          ),
+        ),
+      ),
+    );
+  }
 }
+
+class _BottomNavItem {
+  final IconData icon;
+  final IconData activeIcon;
+  final String label;
+  final String route;
+  final bool isActive;
+
+  const _BottomNavItem({
+    required this.icon,
+    required this.activeIcon,
+    required this.label,
+    required this.route,
+    required this.isActive,
+  });
+}
+

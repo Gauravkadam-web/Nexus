@@ -92,7 +92,7 @@ class _ExecutiveAnalyticsKpiScreenState extends ConsumerState<ExecutiveAnalytics
   @override
   Widget build(BuildContext context) {
     return AppShell(
-      currentPath: '/analytics',
+      currentPath: '/dashboard/manager',
       title: 'Executive Analytics',
       child: _isLoading
           ? const NexusLoadingView(message: 'Computing real-time executive telemetry & KPI aggregations...')
@@ -173,43 +173,50 @@ class _ExecutiveAnalyticsKpiScreenState extends ConsumerState<ExecutiveAnalytics
       {'id': '2026', 'label': '2026 YTD'},
     ];
 
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+    return Wrap(
+      alignment: WrapAlignment.spaceBetween,
+      crossAxisAlignment: WrapCrossAlignment.center,
+      spacing: 8,
+      runSpacing: 6,
       children: [
-        Row(
-          children: ranges.map((r) {
-            final isSelected = _selectedRange == r['id'];
-            return Padding(
-              padding: const EdgeInsets.only(right: 6),
-              child: ChoiceChip(
-                label: Text(
-                  r['label']!,
-                  style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-                    color: isSelected ? AppColors.accentPrimary : AppColors.textSecondary,
+        SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: Row(
+            children: ranges.map((r) {
+              final isSelected = _selectedRange == r['id'];
+              return Padding(
+                padding: const EdgeInsets.only(right: 6),
+                child: ChoiceChip(
+                  label: Text(
+                    r['label']!,
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                      color: isSelected ? AppColors.accentPrimary : AppColors.textSecondary,
+                    ),
                   ),
-                ),
-                selected: isSelected,
-                selectedColor: const Color(0xFFEEF2FF),
-                backgroundColor: Colors.white,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(20),
-                  side: BorderSide(
-                    color: isSelected ? AppColors.accentPrimary : AppColors.borderLight,
+                  selected: isSelected,
+                  selectedColor: const Color(0xFFEEF2FF),
+                  backgroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(20),
+                    side: BorderSide(
+                      color: isSelected ? AppColors.accentPrimary : AppColors.borderLight,
+                    ),
                   ),
+                  onSelected: (selected) {
+                    if (selected) {
+                      setState(() => _selectedRange = r['id']!);
+                      _showFeedbackToast('Metrics filtered by ${r['label']}', Icons.filter_alt, AppColors.accentPrimary);
+                    }
+                  },
                 ),
-                onSelected: (selected) {
-                  if (selected) {
-                    setState(() => _selectedRange = r['id']!);
-                    _showFeedbackToast('Metrics filtered by ${r['label']}', Icons.filter_alt, AppColors.accentPrimary);
-                  }
-                },
-              ),
-            );
-          }).toList(),
+              );
+            }).toList(),
+          ),
         ),
         Row(
+          mainAxisSize: MainAxisSize.min,
           children: [
             Container(width: 6, height: 6, decoration: const BoxDecoration(color: Color(0xFF0D9488), shape: BoxShape.circle)),
             const SizedBox(width: 4),
@@ -235,7 +242,7 @@ class _ExecutiveAnalyticsKpiScreenState extends ConsumerState<ExecutiveAnalytics
           mainAxisSpacing: AppSpacing.sm,
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
-          childAspectRatio: isWide ? 1.5 : 1.35,
+          childAspectRatio: isWide ? 1.5 : 1.15,
           children: [
             _buildMetricTile(
               title: 'Total Inflow',
@@ -457,11 +464,15 @@ class _ExecutiveAnalyticsKpiScreenState extends ConsumerState<ExecutiveAnalytics
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          Wrap(
+            alignment: WrapAlignment.spaceBetween,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            spacing: 8,
+            runSpacing: 4,
             children: [
-              Text('Volume Ingestion vs Resolution Velocity', style: AppTypography.titleMedium(context).copyWith(fontWeight: FontWeight.bold)),
+              Text('Volume vs Velocity', style: AppTypography.titleMedium(context).copyWith(fontWeight: FontWeight.bold, fontSize: 14)),
               Row(
+                mainAxisSize: MainAxisSize.min,
                 children: [
                   _buildLegendIndicator('Incoming', const Color(0xFF6366F1)),
                   const SizedBox(width: 12),
@@ -551,10 +562,13 @@ class _ExecutiveAnalyticsKpiScreenState extends ConsumerState<ExecutiveAnalytics
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          Wrap(
+            alignment: WrapAlignment.spaceBetween,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            spacing: 8,
+            runSpacing: 4,
             children: [
-              Text('Department SLA Compliance', style: AppTypography.titleMedium(context).copyWith(fontWeight: FontWeight.bold)),
+              Text('Department SLA Compliance', style: AppTypography.titleMedium(context).copyWith(fontWeight: FontWeight.bold, fontSize: 14)),
               const Text('Ranked by Speed', style: TextStyle(fontSize: 11, color: AppColors.textSecondary)),
             ],
           ),

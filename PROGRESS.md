@@ -31,13 +31,16 @@
 | **Frontend Batch 9** | Audit Trail & Notification Center (SCR-17, SCR-18) | US-6, US-24, US-30, US-33, US-34 | ✅ Complete | Real API Ledger & Dispatch | Merged to `dev` |
 | **Option 2 RBAC** | **Pure Production Role-Based AppShell** | All Roles | ✅ Complete | Strict Role-Scoped Nav + Footer | Active on Frontend |
 | **Live Governance & Nav** | **Admin User API & Safe Nav Click Routing** | US-1, US-34, US-35 | ✅ Complete | AdminUserController + Safe AppShell Nav (Live Verified) | Merged to `dev` |
+| **Stitch Mobile Parity** | **Mobile BottomNav, Dynamic IPv4 & Zero-Overflow** | All Roles (Mobile) | ✅ Complete | Android IPv4 Resolver + `childAspectRatio: 1.15` + Debug APK Built | Merged to `dev` |
+| **Cloud Deployment** | **Render Dockerfile, Vercel SPA Config & Supabase Storage** | Production Infra | ✅ Complete | Multi-Stage Java 21 Dockerfile, vercel.json, SupabaseStorageService (113/113 Tests Green) | Active in Working Tree |
 
 ---
 
 ## 🏆 Full-Stack Milestone Sign-Off
-Both the entire backend and Flutter frontend for all 35 user stories (US-1 through US-35) are **100% implemented, verified, dynamically bound to the live database, and live-previewed**.
-- **Automated Unit & Integration Tests**: **110/110 Passed** (`mvn test` in 2m 34s, 0 failures, 0 errors).
+Both the entire backend and Flutter frontend for all 35 user stories (US-1 through US-35) are **100% implemented, verified, dynamically bound to the live database, and cloud deployment ready**.
+- **Automated Unit & Integration Tests**: **113/113 Passed** (`mvn test`, 0 failures, 0 errors, including new `SupabaseStorageServiceTest`).
 - **Master Live E2E API Verification**: **62/62 Passed** (`scratch/e2e_live_api_tester.py` against running Spring Boot instance on PostgreSQL `nexus_dev`).
+- **Cloud Deployment Infrastructure**: Multi-stage `Dockerfile` (Java 21) + `render.yaml` for Render; `vercel.json` SPA rewrites + `vercel-build.sh` for Vercel; `SupabaseStorageService` for Supabase Storage buckets.
 - **Database Migrations (Flyway V1–V8, V100, V101)**: Fully versioned PostgreSQL schema + verified BCrypt seed data for 5 enterprise personas.
 - **OpenAPI 3 / Swagger UI**: Active at `http://localhost:8080/swagger-ui.html` with Bearer JWT authorize support.
 - **Frontend Inventory**: **18/18 Stitch Screens** across all 9 batches with mobile and desktop responsive layouts.
@@ -140,3 +143,11 @@ Both the entire backend and Flutter frontend for all 35 user stories (US-1 throu
 - [x] **Demo Role Login Race Condition Fix (`login_screen.dart`)**: Made `_handleDemoRoleLogin` asynchronous with `await` on `loginAsDemoRole()`, preventing default `REQUESTER` navigation fallback on admin/operator login.
 - [x] **Analytics KPI Model Key Harmonization (`analytics_models.dart`)**: Synchronized Dart JSON deserialization with backend keys (`avgResolutionTimeHours`, `slaMetPercentage`, `reopenedRatePercentage`).
 - [x] **Live Browser Verification**: Full-flow E2E browser test passing across `/admin/users`, `/admin/policies`, `/admin/audit-logs`, `/dashboard/manager`, and `/notifications`.
+
+### Mobile Client Parity, Responsive Engine & Hardware Integration (2026-09-23)
+- [x] **Platform-Aware Network Routing (`app_config.dart`)**: Dynamic IPv4 endpoint resolution (`http://127.0.0.1:8080/api/v1/`) on Android physical devices, preventing IPv6 loopback connection refusal over ADB reverse tunnel.
+- [x] **Network Security & Cleartext Configuration (`AndroidManifest.xml`)**: Verified `android:usesCleartextTraffic="true"` and internet permissions for seamless local API binding.
+- [x] **Stitch Mobile Layout Engine (`app_shell.dart`)**: Isolated desktop 256px sidebar to viewports `>= 1100px`. Integrated slide-out Drawer navigation and Stitch Mobile Bottom Navigation Bar (`_buildBottomNav`) with 5 role-specific tabs.
+- [x] **RenderFlex Overflow Elimination Across All 7 KPI Grids**: Adjusted `childAspectRatio` from `1.35` to `1.15` across `operator_triage_feed_screen`, `sla_risk_radar_console_screen`, `problem_management_hub_screen`, `team_lead_command_screen`, `audit_trail_timeline_screen`, `executive_analytics_kpi_screen`, and `admin_user_management_screen`.
+- [x] **Clean Static Analysis & Test Verification**: `dart analyze` — **0 issues found**; `flutter test` — **100% passed** (all 3 interactive responsive & component suites green).
+- [x] **Debug APK Artifact Generation**: Successfully compiled standalone Android Debug APK (`d:\NEXUS\nexus-frontend\build\app\outputs\flutter-apk\app-debug.apk`) ready for physical hardware deployment.

@@ -10,7 +10,7 @@ class InvestigationApi {
   Future<ApiResponse<List<InvestigationTaskModel>>> getTasks(String caseId) async {
     try {
       final response = await _client.dio.get(ApiEndpoints.caseTasks(caseId));
-      final rawList = response.data['data'] as List<dynamic>? ?? [];
+      final rawList = ApiResponse.extractList(response.data['data']);
       final list = rawList.map((e) => InvestigationTaskModel.fromJson(e as Map<String, dynamic>)).toList();
       return ApiResponse(success: true, data: list);
     } on DioException catch (e) {
@@ -68,7 +68,7 @@ class InvestigationApi {
   Future<ApiResponse<List<InvestigationRecordModel>>> getInvestigations(String caseId) async {
     try {
       final response = await _client.dio.get(ApiEndpoints.caseInvestigations(caseId));
-      final rawList = response.data['data'] as List<dynamic>? ?? [];
+      final rawList = ApiResponse.extractList(response.data['data']);
       final list = rawList.map((e) => InvestigationRecordModel.fromJson(e as Map<String, dynamic>)).toList();
       return ApiResponse(success: true, data: list);
     } on DioException catch (e) {

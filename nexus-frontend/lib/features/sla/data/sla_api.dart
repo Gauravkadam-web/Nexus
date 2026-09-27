@@ -24,7 +24,7 @@ class SlaApi {
   Future<ApiResponse<List<SlaRiskCaseModel>>> getAtRiskCases() async {
     try {
       final response = await _client.dio.get(ApiEndpoints.slaAtRisk);
-      final rawList = response.data['data'] as List<dynamic>? ?? [];
+      final rawList = ApiResponse.extractList(response.data['data']);
       final list = rawList.map((e) => SlaRiskCaseModel.fromJson(e as Map<String, dynamic>)).toList();
       return ApiResponse(success: true, data: list);
     } on DioException catch (e) {
@@ -37,7 +37,7 @@ class SlaApi {
   Future<ApiResponse<List<SlaRiskCaseModel>>> getBreachedCases() async {
     try {
       final response = await _client.dio.get(ApiEndpoints.slaBreached);
-      final rawList = response.data['data'] as List<dynamic>? ?? [];
+      final rawList = ApiResponse.extractList(response.data['data']);
       final list = rawList.map((e) => SlaRiskCaseModel.fromJson(e as Map<String, dynamic>)).toList();
       return ApiResponse(success: true, data: list);
     } on DioException catch (e) {

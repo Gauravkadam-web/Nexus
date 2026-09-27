@@ -10,7 +10,7 @@ class CaseApi {
   Future<ApiResponse<List<CaseModel>>> getMyCases() async {
     try {
       final response = await _client.dio.get(ApiEndpoints.myCases);
-      final rawList = response.data['data'] as List<dynamic>? ?? [];
+      final rawList = ApiResponse.extractList(response.data['data']);
       final cases = rawList.map((e) => CaseModel.fromJson(e as Map<String, dynamic>)).toList();
       return ApiResponse(success: true, data: cases);
     } on DioException catch (e) {
@@ -23,7 +23,7 @@ class CaseApi {
   Future<ApiResponse<List<CaseModel>>> getAssignedCases() async {
     try {
       final response = await _client.dio.get(ApiEndpoints.assignedCases);
-      final rawList = response.data['data'] as List<dynamic>? ?? [];
+      final rawList = ApiResponse.extractList(response.data['data']);
       final cases = rawList.map((e) => CaseModel.fromJson(e as Map<String, dynamic>)).toList();
       return ApiResponse(success: true, data: cases);
     } on DioException catch (e) {
@@ -36,7 +36,7 @@ class CaseApi {
   Future<ApiResponse<List<CaseModel>>> getTeamCases() async {
     try {
       final response = await _client.dio.get(ApiEndpoints.teamCases);
-      final rawList = response.data['data'] as List<dynamic>? ?? [];
+      final rawList = ApiResponse.extractList(response.data['data']);
       final cases = rawList.map((e) => CaseModel.fromJson(e as Map<String, dynamic>)).toList();
       return ApiResponse(success: true, data: cases);
     } on DioException catch (e) {
@@ -151,7 +151,7 @@ class CaseApi {
         ApiEndpoints.caseSearch,
         queryParameters: queryParams,
       );
-      final rawList = response.data['data'] as List<dynamic>? ?? [];
+      final rawList = ApiResponse.extractList(response.data['data']);
       final cases = rawList.map((e) => CaseModel.fromJson(e as Map<String, dynamic>)).toList();
       return ApiResponse(success: true, data: cases);
     } on DioException catch (e) {

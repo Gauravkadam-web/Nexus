@@ -11,7 +11,7 @@ class CollaborationApi {
   Future<ApiResponse<List<MessageModel>>> getMessages(String caseId) async {
     try {
       final response = await _client.dio.get(ApiEndpoints.caseMessages(caseId));
-      final rawList = response.data['data'] as List<dynamic>? ?? [];
+      final rawList = ApiResponse.extractList(response.data['data']);
       final list = rawList.map((e) => MessageModel.fromJson(e as Map<String, dynamic>)).toList();
       return ApiResponse(success: true, data: list);
     } on DioException catch (e) {
@@ -70,7 +70,7 @@ class CollaborationApi {
   Future<ApiResponse<List<InternalNoteModel>>> getInternalNotes(String caseId) async {
     try {
       final response = await _client.dio.get(ApiEndpoints.caseNotes(caseId));
-      final rawList = response.data['data'] as List<dynamic>? ?? [];
+      final rawList = ApiResponse.extractList(response.data['data']);
       final list = rawList.map((e) => InternalNoteModel.fromJson(e as Map<String, dynamic>)).toList();
       return ApiResponse(success: true, data: list);
     } on DioException catch (e) {
@@ -83,7 +83,7 @@ class CollaborationApi {
   Future<ApiResponse<List<AttachmentModel>>> getAttachments(String caseId) async {
     try {
       final response = await _client.dio.get(ApiEndpoints.caseAttachments(caseId));
-      final rawList = response.data['data'] as List<dynamic>? ?? [];
+      final rawList = ApiResponse.extractList(response.data['data']);
       final list = rawList.map((e) => AttachmentModel.fromJson(e as Map<String, dynamic>)).toList();
       return ApiResponse(success: true, data: list);
     } on DioException catch (e) {

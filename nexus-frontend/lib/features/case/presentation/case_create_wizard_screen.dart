@@ -373,15 +373,17 @@ class _CaseCreateWizardScreenState extends ConsumerState<CaseCreateWizardScreen>
           ),
           const SizedBox(height: AppSpacing.xl),
 
-          Row(
-            mainAxisAlignment: MainAxisAlignment.end,
+          Wrap(
+            alignment: WrapAlignment.end,
+            spacing: AppSpacing.sm,
+            runSpacing: AppSpacing.sm,
+            crossAxisAlignment: WrapCrossAlignment.center,
             children: [
               NexusButton(
                 text: 'Cancel / Draft',
                 variant: NexusButtonVariant.ghost,
                 onPressed: () => context.go('/dashboard/requester'),
               ),
-              const SizedBox(width: AppSpacing.md),
               NexusButton(
                 text: 'Submit Support Case',
                 icon: Icons.send,

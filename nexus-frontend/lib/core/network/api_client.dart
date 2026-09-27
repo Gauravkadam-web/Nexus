@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../config/app_config.dart';
 
@@ -34,6 +35,7 @@ class ApiClient {
           return handler.next(options);
         },
         onError: (DioException error, handler) async {
+          debugPrint('[ApiClient Error] ${error.type} | ${error.message} | URL: ${error.requestOptions.uri}');
           if (error.response?.statusCode == 401) {
             // Attempt token refresh
             final refreshed = await _attemptTokenRefresh();

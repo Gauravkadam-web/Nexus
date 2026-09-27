@@ -270,10 +270,14 @@ class _AiCopilotSmartDrafterScreenState extends ConsumerState<AiCopilotSmartDraf
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          Wrap(
+            alignment: WrapAlignment.spaceBetween,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            spacing: 8,
+            runSpacing: 4,
             children: [
               Row(
+                mainAxisSize: MainAxisSize.min,
                 children: [
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
@@ -282,7 +286,10 @@ class _AiCopilotSmartDrafterScreenState extends ConsumerState<AiCopilotSmartDraf
                         style: const TextStyle(color: Color(0xFFE11D48), fontSize: 9, fontWeight: FontWeight.bold)),
                   ),
                   const SizedBox(width: 6),
-                  Text(caseNum, style: AppTypography.codeSmall(context).copyWith(fontWeight: FontWeight.bold)),
+                  Text(
+                    caseNum.length > 16 ? 'NEX-${caseNum.substring(0, 8).toUpperCase()}' : caseNum,
+                    style: AppTypography.codeSmall(context).copyWith(fontWeight: FontWeight.bold),
+                  ),
                 ],
               ),
               Text(
@@ -467,18 +474,16 @@ class _AiCopilotSmartDrafterScreenState extends ConsumerState<AiCopilotSmartDraf
             desc: 'Downstream SSO token verification timing out at the hard ceiling, saturating connection pools.',
           ),
           const SizedBox(height: AppSpacing.sm),
-          Row(
+          Wrap(
+            crossAxisAlignment: WrapCrossAlignment.center,
+            spacing: 6,
+            runSpacing: 4,
             children: [
               const Text('SOURCES:', style: TextStyle(color: AppColors.textMuted, fontSize: 9, fontWeight: FontWeight.bold)),
-              const SizedBox(width: 6),
               if (_citations.isNotEmpty)
-                ..._citations.map((c) => Padding(
-                      padding: const EdgeInsets.only(right: 4),
-                      child: _buildSourceChip(c.sourceTitle),
-                    ))
+                ..._citations.map((c) => _buildSourceChip(c.sourceTitle))
               else ...[
                 _buildSourceChip('Telemetry Stream'),
-                const SizedBox(width: 4),
                 _buildSourceChip('Envoy Pod Metrics'),
               ],
             ],

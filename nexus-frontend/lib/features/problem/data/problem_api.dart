@@ -10,7 +10,7 @@ class ProblemApi {
   Future<ApiResponse<List<ProblemModel>>> getProblems() async {
     try {
       final response = await _client.dio.get(ApiEndpoints.problems);
-      final rawList = response.data['data'] as List<dynamic>? ?? [];
+      final rawList = ApiResponse.extractList(response.data['data']);
       final list = rawList.map((e) => ProblemModel.fromJson(e as Map<String, dynamic>)).toList();
       return ApiResponse(success: true, data: list);
     } on DioException catch (e) {
@@ -37,7 +37,7 @@ class ProblemApi {
   Future<ApiResponse<List<RecurringPatternModel>>> getRecurringPatterns() async {
     try {
       final response = await _client.dio.get(ApiEndpoints.problemRecurringPatterns);
-      final rawList = response.data['data'] as List<dynamic>? ?? [];
+      final rawList = ApiResponse.extractList(response.data['data']);
       final list = rawList.map((e) => RecurringPatternModel.fromJson(e as Map<String, dynamic>)).toList();
       return ApiResponse(success: true, data: list);
     } on DioException catch (e) {

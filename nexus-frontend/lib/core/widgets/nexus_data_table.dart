@@ -71,7 +71,8 @@ class NexusDataTable<T> extends StatelessWidget {
       );
     }
 
-    return Container(
+    Widget tableWidget = Container(
+      constraints: isMobile ? const BoxConstraints(minWidth: 700) : null,
       decoration: BoxDecoration(
         color: isDark ? AppColors.darkSurface : AppColors.lightSurface,
         borderRadius: BorderRadius.circular(AppSpacing.radiusXl),
@@ -161,6 +162,15 @@ class NexusDataTable<T> extends StatelessWidget {
         ),
       ),
     );
+
+    if (isMobile) {
+      return SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: tableWidget,
+      );
+    }
+
+    return tableWidget;
   }
 }
 

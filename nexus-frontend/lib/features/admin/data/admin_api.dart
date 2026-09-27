@@ -10,7 +10,7 @@ class AdminApi {
   Future<ApiResponse<List<AdminUserModel>>> getUsers() async {
     try {
       final response = await _client.dio.get(ApiEndpoints.adminUsers);
-      final rawList = response.data['data'] as List<dynamic>? ?? [];
+      final rawList = ApiResponse.extractList(response.data['data']);
       final list = rawList.map((e) => AdminUserModel.fromJson(e as Map<String, dynamic>)).toList();
       return ApiResponse(success: true, data: list);
     } on DioException catch (e) {
@@ -43,7 +43,7 @@ class AdminApi {
   Future<ApiResponse<List<SlaPolicyModel>>> getSlaPolicies() async {
     try {
       final response = await _client.dio.get(ApiEndpoints.adminSlaPolicies);
-      final rawList = response.data['data'] as List<dynamic>? ?? [];
+      final rawList = ApiResponse.extractList(response.data['data']);
       final list = rawList.map((e) => SlaPolicyModel.fromJson(e as Map<String, dynamic>)).toList();
       return ApiResponse(success: true, data: list);
     } on DioException catch (e) {
@@ -56,7 +56,7 @@ class AdminApi {
   Future<ApiResponse<List<EscalationRuleModel>>> getEscalationRules() async {
     try {
       final response = await _client.dio.get(ApiEndpoints.adminEscalationRules);
-      final rawList = response.data['data'] as List<dynamic>? ?? [];
+      final rawList = ApiResponse.extractList(response.data['data']);
       final list = rawList.map((e) => EscalationRuleModel.fromJson(e as Map<String, dynamic>)).toList();
       return ApiResponse(success: true, data: list);
     } on DioException catch (e) {
@@ -69,7 +69,7 @@ class AdminApi {
   Future<ApiResponse<List<CategoryModel>>> getCategories() async {
     try {
       final response = await _client.dio.get(ApiEndpoints.categories);
-      final rawList = response.data['data'] as List<dynamic>? ?? [];
+      final rawList = ApiResponse.extractList(response.data['data']);
       final list = rawList.map((e) => CategoryModel.fromJson(e as Map<String, dynamic>)).toList();
       return ApiResponse(success: true, data: list);
     } on DioException catch (e) {
@@ -82,7 +82,7 @@ class AdminApi {
   Future<ApiResponse<List<TeamModel>>> getTeams() async {
     try {
       final response = await _client.dio.get(ApiEndpoints.teams);
-      final rawList = response.data['data'] as List<dynamic>? ?? [];
+      final rawList = ApiResponse.extractList(response.data['data']);
       final list = rawList.map((e) => TeamModel.fromJson(e as Map<String, dynamic>)).toList();
       return ApiResponse(success: true, data: list);
     } on DioException catch (e) {

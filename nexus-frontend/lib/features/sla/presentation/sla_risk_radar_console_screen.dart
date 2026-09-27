@@ -174,32 +174,38 @@ class _SlaRiskRadarConsoleScreenState extends ConsumerState<SlaRiskRadarConsoleS
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Row(
-            children: [
-              Container(
-                width: 8,
-                height: 8,
-                decoration: const BoxDecoration(
-                  color: Color(0xFF0D9488),
-                  shape: BoxShape.circle,
+          Expanded(
+            child: Row(
+              children: [
+                Container(
+                  width: 8,
+                  height: 8,
+                  decoration: const BoxDecoration(
+                    color: Color(0xFF0D9488),
+                    shape: BoxShape.circle,
+                  ),
                 ),
-              ),
-              const SizedBox(width: 8),
-              Text(
-                'US-East-Sys04 SLA Cluster',
-                style: AppTypography.titleSmall(context).copyWith(fontWeight: FontWeight.w600),
-              ),
-              const SizedBox(width: 6),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFF1F5F9),
-                  borderRadius: BorderRadius.circular(4),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'US-East-Sys04 SLA Cluster',
+                    overflow: TextOverflow.ellipsis,
+                    style: AppTypography.titleSmall(context).copyWith(fontWeight: FontWeight.w600),
+                  ),
                 ),
-                child: const Text('v4.19', style: TextStyle(fontSize: 10, color: AppColors.textSecondary, fontFamily: 'monospace')),
-              ),
-            ],
+                const SizedBox(width: 6),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF1F5F9),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: const Text('v4.19', style: TextStyle(fontSize: 10, color: AppColors.textSecondary, fontFamily: 'monospace')),
+                ),
+              ],
+            ),
           ),
+          const SizedBox(width: AppSpacing.xs),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
             decoration: BoxDecoration(
@@ -207,6 +213,7 @@ class _SlaRiskRadarConsoleScreenState extends ConsumerState<SlaRiskRadarConsoleS
               borderRadius: BorderRadius.circular(12),
             ),
             child: const Row(
+              mainAxisSize: MainAxisSize.min,
               children: [
                 Icon(Icons.sync, size: 12, color: AppColors.accentPrimary),
                 SizedBox(width: 4),
@@ -232,7 +239,7 @@ class _SlaRiskRadarConsoleScreenState extends ConsumerState<SlaRiskRadarConsoleS
           mainAxisSpacing: AppSpacing.sm,
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
-          childAspectRatio: isWide ? 1.5 : 1.35,
+          childAspectRatio: isWide ? 1.5 : 1.15,
           children: [
             _buildKpiCard(
               title: 'IMMINENT',
@@ -616,13 +623,17 @@ class _SlaRiskRadarConsoleScreenState extends ConsumerState<SlaRiskRadarConsoleS
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          Wrap(
+            alignment: WrapAlignment.spaceBetween,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            spacing: 8,
+            runSpacing: 4,
             children: [
               Row(
+                mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(
-                    caseId,
+                    caseId.length > 16 ? 'NEX-${caseId.substring(0, 8).toUpperCase()}' : caseId,
                     style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: AppColors.accentPrimary),
                   ),
                   const SizedBox(width: 8),
@@ -684,10 +695,14 @@ class _SlaRiskRadarConsoleScreenState extends ConsumerState<SlaRiskRadarConsoleS
             ],
           ),
           const SizedBox(height: 10),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          Wrap(
+            alignment: WrapAlignment.spaceBetween,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            spacing: 8,
+            runSpacing: 6,
             children: [
               Row(
+                mainAxisSize: MainAxisSize.min,
                 children: [
                   const Icon(Icons.person_outline, size: 14, color: AppColors.textSecondary),
                   const SizedBox(width: 4),
@@ -711,6 +726,7 @@ class _SlaRiskRadarConsoleScreenState extends ConsumerState<SlaRiskRadarConsoleS
                 ],
               ),
               Row(
+                mainAxisSize: MainAxisSize.min,
                 children: [
                   InkWell(
                     onTap: () => _showFeedbackToast('Tier 2 Escalation confirmed & broadcasted', Icons.bolt, const Color(0xFFE11D48)),

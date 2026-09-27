@@ -223,7 +223,7 @@ class _ProblemManagementHubScreenState extends ConsumerState<ProblemManagementHu
           mainAxisSpacing: AppSpacing.sm,
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
-          childAspectRatio: isWide ? 1.5 : 1.35,
+          childAspectRatio: isWide ? 1.5 : 1.15,
           children: [
             _buildKpiCard(
               title: 'ACTIVE PROBLEMS',

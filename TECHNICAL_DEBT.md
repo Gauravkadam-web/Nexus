@@ -33,6 +33,25 @@ This document tracks intentional trade-offs, temporary scaffolding defaults, and
 | **Demo Quick-Login Asynchronous Race Condition** | Frontend / Auth | `loginAsDemoRole` called synchronously without `await`, causing GoRouter to navigate before user role was set. | Converted `_handleDemoRoleLogin` to `async` and awaited auth before navigation | ✅ Resolved |
 | **Resilient AI Provider Boot Fallback** | Backend / AI | When `AI_PROVIDER` is set without valid API keys, Spring Boot failed to instantiate chat model beans. | Configured `AiConfig.java` with `@ConditionalOnMissingBean` to auto-fallback to `MockAiProvider` | ✅ Resolved |
 | **Executive Analytics Telemetry Key Harmonization** | Frontend / Analytics | Discrepancy between backend response keys and `analytics_models.dart` fallback strings. | Updated Dart deserialization keys to match backend telemetry API | ✅ Resolved |
+| **Android ADB Reverse IPv6 DNS Connection Refusal** | Frontend / Android | Android physical devices resolve `localhost` to IPv6 `[::1]`, refusing ADB reverse tunnel connection. | Dynamic platform router in `AppConfig.dart` sets `http://127.0.0.1:8080/api/v1/` on Android | ✅ Resolved |
+| **Mobile Layout Squeeze from Fixed Desktop Sidebar** | Frontend / Layout | AppShell rendered fixed 256px sidebar in horizontal Row on all viewports, crushing 360px mobile viewports. | Gated sidebar to `width >= 1100px`, switched mobile to slide-out Drawer + BottomNav | ✅ Resolved |
+| **Backend Production Multi-Stage Dockerfile for Render** | Backend / Infra | Render native Java environment could suffer build timeouts or version mismatch on Spring Boot 3.3.4 (Java 21). | Created multi-stage `Dockerfile` (`maven:3.9-eclipse-temurin-21` -> `eclipse-temurin:21-jre-alpine`) with unprivileged user and memory limits + `render.yaml` Blueprint | ✅ Resolved |
+| **Supabase Cloud Storage Integration with Graceful Fallback** | Backend / Storage | `LocalStorageService` saved files to ephemeral container disk on Render. | Created `SupabaseStorageService.java` with REST API multipart upload to Supabase bucket and automatic fallback to local disk; verified with 3 unit tests | ✅ Resolved |
+| **Vercel Flutter Web SPA Routing & Deep Link 404 Prevention** | Frontend / Infra | Direct navigation or refresh on deep URLs (`/dashboard/manager`, `/cases/:id/track`) failed with 404 on Vercel. | Added `vercel.json` with SPA rewrite rules (`/(.*)` -> `/index.html`), caching headers, and `vercel-build.sh` build script | ✅ Resolved |
+| **Mobile Multi-Role Dynamic Data & Overflow Hardening** | Frontend / Mobile | Audit all 5 persona roles (Operator, Requester, Team Lead, Manager, Admin) on 360px mobile viewport, ensuring universal `ApiResponse.extractList` page parsing, flexible badge rows with zero RenderFlex overflow, and unified final APK release. | Next Session Multi-Role Consolidated Sprint | 📋 Tracked & Ready for Next Session |
+
+
+---
+
+## 📱 Mobile Multi-Role Audit & Consolidation Plan (Next Session Action Matrix)
+
+| Role | Target Screens | Dynamic Data Endpoints | Mobile Layout Hardening Scope (360px Viewport) |
+|---|---|---|---|
+| **Operator** | `OperatorTriageFeedScreen`<br>`OperatorInvestigationStudioScreen`<br>`SlaRiskRadarConsoleScreen` | `/api/v1/cases/assigned`<br>`/api/v1/cases/team`<br>`/api/v1/cases/{id}`<br>`/api/v1/cases/{id}/tasks`<br>`/api/v1/sla/at-risk` | • Flexible card header with short `NEX-XXXXXX` IDs<br>• Stacked action buttons (`Reassign`, `Open Studio`)<br>• Activity stream & tab bar alignment<br>• Studio workbench full-width composer |
+| **Requester** | `RequesterDashboardScreen`<br>`CaseCreateWizardScreen`<br>`CaseTrackerScreen` | `/api/v1/cases/my`<br>`/api/v1/categories`<br>`/api/v1/cases/{id}/timeline` | • KPI cards adaptive aspect ratio (`1.15`)<br>• Case creation form stacked dropdowns<br>• Interactive timeline step nodes vertical alignment |
+| **Team Lead** | `TeamLeadCommandScreen` | `/api/v1/cases/team`<br>`/api/v1/collaboration/workload/team` | • Member workload cards responsive grid<br>• Team case assignment dialog full-screen modal on mobile |
+| **Manager / Exec** | `ExecutiveAnalyticsScreen`<br>`ProblemManagementScreen` | `/api/v1/analytics/overview`<br>`/api/v1/analytics/trends`<br>`/api/v1/problems` | • Chart containers scrollable / simplified mobile card view<br>• Recurring problem pattern cards wrapping |
+| **Admin** | `AdminUserManagementScreen`<br>`AdminSettingsScreen` | `/api/v1/admin/users`<br>`/api/v1/admin/sla-policies`<br>`/api/v1/admin/escalation-rules` | • User table converted to responsive list tile cards on mobile<br>• Role dropdown & action sheet |
 
 ---
 

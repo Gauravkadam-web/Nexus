@@ -172,7 +172,7 @@ class _CaseTrackerScreenState extends ConsumerState<CaseTrackerScreen> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return AppShell(
-      currentPath: '/dashboard/requester',
+      currentPath: '/cases/${widget.caseId}/track',
       title: 'Case Tracker',
       child: _isLoading
           ? const NexusLoadingView(message: 'Tracking case milestone trajectory & telemetry...')

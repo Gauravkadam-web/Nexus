@@ -149,8 +149,11 @@ class _AdminUserManagementScreenState extends ConsumerState<AdminUserManagementS
   }
 
   Widget _buildAdminHeaderActionRow(BuildContext context) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+    return Wrap(
+      alignment: WrapAlignment.spaceBetween,
+      crossAxisAlignment: WrapCrossAlignment.center,
+      spacing: 8,
+      runSpacing: 6,
       children: [
         Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -241,7 +244,7 @@ class _AdminUserManagementScreenState extends ConsumerState<AdminUserManagementS
           mainAxisSpacing: AppSpacing.sm,
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
-          childAspectRatio: isWide ? 1.5 : 1.35,
+          childAspectRatio: isWide ? 1.5 : 1.15,
           children: [
             _buildKpiCard(
               title: 'TOTAL USERS',
@@ -467,32 +470,30 @@ class _AdminUserManagementScreenState extends ConsumerState<AdminUserManagementS
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Row(
-                children: [
-                  CircleAvatar(
-                    radius: 16,
-                    backgroundColor: isOnline ? const Color(0xFFCCFBF1) : const Color(0xFFF1F5F9),
-                    child: Text(
-                      name.split(' ').map((e) => e[0]).take(2).join(),
-                      style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.bold,
-                        color: isOnline ? const Color(0xFF0D9488) : AppColors.textSecondary,
-                      ),
-                    ),
+              CircleAvatar(
+                radius: 16,
+                backgroundColor: isOnline ? const Color(0xFFCCFBF1) : const Color(0xFFF1F5F9),
+                child: Text(
+                  name.split(' ').map((e) => e.isNotEmpty ? e[0] : '').take(2).join(),
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.bold,
+                    color: isOnline ? const Color(0xFF0D9488) : AppColors.textSecondary,
                   ),
-                  const SizedBox(width: 8),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppColors.textPrimary)),
-                      Text(email, style: const TextStyle(fontSize: 11, color: AppColors.textSecondary)),
-                    ],
-                  ),
-                ],
+                ),
               ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(name, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppColors.textPrimary)),
+                    Text(email, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 11, color: AppColors.textSecondary)),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 6),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                 decoration: BoxDecoration(

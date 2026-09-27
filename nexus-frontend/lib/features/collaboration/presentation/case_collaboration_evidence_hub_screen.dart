@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
@@ -227,15 +228,19 @@ class _CaseCollaborationEvidenceHubScreenState extends ConsumerState<CaseCollabo
         borderRadius: BorderRadius.circular(14),
         border: Border.all(color: isUrgent ? const Color(0xFFE11D48).withValues(alpha: 0.2) : const Color(0xFF3B82F6).withValues(alpha: 0.2)),
       ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      child: Wrap(
+        alignment: WrapAlignment.spaceBetween,
+        crossAxisAlignment: WrapCrossAlignment.center,
+        spacing: 8,
+        runSpacing: 6,
         children: [
           Row(
+            mainAxisSize: MainAxisSize.min,
             children: [
               Icon(isUrgent ? Icons.emergency : Icons.info_outline, size: 18, color: isUrgent ? const Color(0xFFE11D48) : const Color(0xFF2563EB)),
               const SizedBox(width: 6),
               Text(
-                caseNum,
+                caseNum.length > 16 ? 'NEX-${caseNum.substring(0, 8).toUpperCase()}' : caseNum,
                 style: AppTypography.codeSmall(context).copyWith(
                   color: isUrgent ? const Color(0xFFE11D48) : const Color(0xFF2563EB),
                   fontWeight: FontWeight.bold,
@@ -261,31 +266,63 @@ class _CaseCollaborationEvidenceHubScreenState extends ConsumerState<CaseCollabo
               ),
             ],
           ),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.8),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Row(
-              children: [
-                Icon(Icons.timer, size: 14, color: isUrgent ? const Color(0xFFE11D48) : const Color(0xFF2563EB)),
-                const SizedBox(width: 4),
-                Text(
-                  _caseDetail?.slaRiskLevel == 'BREACHED'
-                      ? 'SLA BREACHED'
-                      : _caseDetail?.slaRiskLevel == 'CRITICAL'
-                          ? 'BREACH IN < 1HR'
-                          : 'SLA COMPLIANT',
-                  style: TextStyle(
-                    color: isUrgent ? const Color(0xFFE11D48) : const Color(0xFF2563EB),
-                    fontSize: 10,
-                    fontWeight: FontWeight.bold,
-                    fontFamily: 'JetBrains Mono',
-                  ),
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              OutlinedButton.icon(
+                onPressed: () => context.push('/cases/${widget.caseId}/investigation'),
+                icon: const Icon(Icons.arrow_back, size: 12),
+                label: const Text('Studio', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold)),
+                style: OutlinedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  minimumSize: Size.zero,
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  backgroundColor: Colors.white.withValues(alpha: 0.6),
+                  side: BorderSide(color: isUrgent ? const Color(0xFFFDA4AF) : const Color(0xFF93C5FD)),
                 ),
-              ],
-            ),
+              ),
+              const SizedBox(width: 6),
+              OutlinedButton.icon(
+                onPressed: () => context.push('/cases/${widget.caseId}/copilot'),
+                icon: const Icon(Icons.auto_awesome, size: 12, color: Color(0xFF831ADA)),
+                label: const Text('Copilot', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Color(0xFF831ADA))),
+                style: OutlinedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  minimumSize: Size.zero,
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  backgroundColor: Colors.white.withValues(alpha: 0.6),
+                  side: const BorderSide(color: Color(0xFFC084FC)),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.8),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.timer, size: 14, color: isUrgent ? const Color(0xFFE11D48) : const Color(0xFF2563EB)),
+                    const SizedBox(width: 4),
+                    Text(
+                      _caseDetail?.slaRiskLevel == 'BREACHED'
+                          ? 'SLA BREACHED'
+                          : _caseDetail?.slaRiskLevel == 'CRITICAL'
+                              ? 'BREACH IN < 1HR'
+                              : 'SLA COMPLIANT',
+                      style: TextStyle(
+                        color: isUrgent ? const Color(0xFFE11D48) : const Color(0xFF2563EB),
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                        fontFamily: 'JetBrains Mono',
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
         ],
       ),

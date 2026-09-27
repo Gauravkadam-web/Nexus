@@ -124,23 +124,29 @@ class _AuditTrailTimelineScreenState extends ConsumerState<AuditTrailTimelineScr
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Row(
-            children: [
-              Container(
-                width: 8,
-                height: 8,
-                decoration: const BoxDecoration(
-                  color: Color(0xFF0D9488),
-                  shape: BoxShape.circle,
+          Expanded(
+            child: Row(
+              children: [
+                Container(
+                  width: 8,
+                  height: 8,
+                  decoration: const BoxDecoration(
+                    color: Color(0xFF0D9488),
+                    shape: BoxShape.circle,
+                  ),
                 ),
-              ),
-              const SizedBox(width: 8),
-              const Text(
-                'Continuous Ledger Anchoring Active',
-                style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF0D9488)),
-              ),
-            ],
+                const SizedBox(width: 8),
+                const Expanded(
+                  child: Text(
+                    'Continuous Ledger Anchoring Active',
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF0D9488)),
+                  ),
+                ),
+              ],
+            ),
           ),
+          const SizedBox(width: 6),
           const Text(
             'SOC2 / ISO 27001',
             style: TextStyle(fontSize: 10, color: AppColors.textSecondary, fontFamily: 'monospace'),
@@ -160,7 +166,7 @@ class _AuditTrailTimelineScreenState extends ConsumerState<AuditTrailTimelineScr
           mainAxisSpacing: AppSpacing.sm,
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
-          childAspectRatio: isWide ? 1.5 : 1.35,
+          childAspectRatio: isWide ? 1.5 : 1.15,
           children: [
             _buildHealthTile(
               title: 'MERKLE STATE',
@@ -402,10 +408,14 @@ class _AuditTrailTimelineScreenState extends ConsumerState<AuditTrailTimelineScr
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          Wrap(
+            alignment: WrapAlignment.spaceBetween,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            spacing: 8,
+            runSpacing: 4,
             children: [
               Row(
+                mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(height, style: const TextStyle(fontFamily: 'monospace', fontWeight: FontWeight.bold, fontSize: 11, color: AppColors.textSecondary)),
                   const SizedBox(width: 8),
@@ -417,6 +427,7 @@ class _AuditTrailTimelineScreenState extends ConsumerState<AuditTrailTimelineScr
                 ],
               ),
               const Row(
+                mainAxisSize: MainAxisSize.min,
                 children: [
                   Icon(Icons.lock, size: 12, color: Color(0xFF0D9488)),
                   SizedBox(width: 4),
@@ -440,7 +451,9 @@ class _AuditTrailTimelineScreenState extends ConsumerState<AuditTrailTimelineScr
             children: [
               Icon(Icons.fingerprint, size: 12, color: Color(0xFF0D9488)),
               SizedBox(width: 4),
-              Text('SHA-256 Valid • ED25519 HSM Signed', style: TextStyle(fontSize: 9, color: AppColors.textMuted)),
+              Expanded(
+                child: Text('SHA-256 Valid • ED25519 HSM Signed', overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 9, color: AppColors.textMuted)),
+              ),
             ],
           ),
         ],

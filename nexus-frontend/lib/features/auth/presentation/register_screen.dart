@@ -211,53 +211,70 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                     ),
                     const SizedBox(height: AppSpacing.md),
 
-                    // Organization & Role (2 columns on tablet/desktop)
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text('Organization', style: AppTypography.titleSmall(isDark)),
-                              const SizedBox(height: AppSpacing.xs),
-                              DropdownButtonFormField<String>(
-                                initialValue: _selectedOrg,
-                                decoration: const InputDecoration(
-                                  contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-                                ),
-                                items: const [
-                                  DropdownMenuItem(value: 'Acme Corporation', child: Text('Acme Corp')),
-                                  DropdownMenuItem(value: 'Nexus Enterprise', child: Text('Nexus Enterprise')),
-                                  DropdownMenuItem(value: 'Global Logistics', child: Text('Global Logistics')),
-                                ],
-                                onChanged: (val) => setState(() => _selectedOrg = val ?? _selectedOrg),
+                    // Organization & Role (Stacked on mobile, 2 columns on tablet/desktop)
+                    LayoutBuilder(
+                      builder: (context, constraints) {
+                        final isNarrow = constraints.maxWidth < 400;
+                        final orgField = Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text('Organization', style: AppTypography.titleSmall(isDark)),
+                            const SizedBox(height: AppSpacing.xs),
+                            DropdownButtonFormField<String>(
+                              initialValue: _selectedOrg,
+                              isExpanded: true,
+                              decoration: const InputDecoration(
+                                contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 12),
                               ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(width: AppSpacing.md),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text('Initial Role', style: AppTypography.titleSmall(isDark)),
-                              const SizedBox(height: AppSpacing.xs),
-                              DropdownButtonFormField<String>(
-                                initialValue: _selectedRole,
-                                decoration: const InputDecoration(
-                                  contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-                                ),
-                                items: const [
-                                  DropdownMenuItem(value: 'REQUESTER', child: Text('Requester')),
-                                  DropdownMenuItem(value: 'CASE_OPERATOR', child: Text('Case Operator')),
-                                  DropdownMenuItem(value: 'TEAM_LEAD', child: Text('Team Lead')),
-                                ],
-                                onChanged: (val) => setState(() => _selectedRole = val ?? _selectedRole),
+                              items: const [
+                                DropdownMenuItem(value: 'Acme Corporation', child: Text('Acme Corp', overflow: TextOverflow.ellipsis)),
+                                DropdownMenuItem(value: 'Nexus Enterprise', child: Text('Nexus Enterprise', overflow: TextOverflow.ellipsis)),
+                                DropdownMenuItem(value: 'Global Logistics', child: Text('Global Logistics', overflow: TextOverflow.ellipsis)),
+                              ],
+                              onChanged: (val) => setState(() => _selectedOrg = val ?? _selectedOrg),
+                            ),
+                          ],
+                        );
+
+                        final roleField = Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text('Initial Role', style: AppTypography.titleSmall(isDark)),
+                            const SizedBox(height: AppSpacing.xs),
+                            DropdownButtonFormField<String>(
+                              initialValue: _selectedRole,
+                              isExpanded: true,
+                              decoration: const InputDecoration(
+                                contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 12),
                               ),
+                              items: const [
+                                DropdownMenuItem(value: 'REQUESTER', child: Text('Requester', overflow: TextOverflow.ellipsis)),
+                                DropdownMenuItem(value: 'CASE_OPERATOR', child: Text('Case Operator', overflow: TextOverflow.ellipsis)),
+                                DropdownMenuItem(value: 'TEAM_LEAD', child: Text('Team Lead', overflow: TextOverflow.ellipsis)),
+                              ],
+                              onChanged: (val) => setState(() => _selectedRole = val ?? _selectedRole),
+                            ),
+                          ],
+                        );
+
+                        if (isNarrow) {
+                          return Column(
+                            children: [
+                              orgField,
+                              const SizedBox(height: AppSpacing.md),
+                              roleField,
                             ],
-                          ),
-                        ),
-                      ],
+                          );
+                        }
+
+                        return Row(
+                          children: [
+                            Expanded(child: orgField),
+                            const SizedBox(width: AppSpacing.md),
+                            Expanded(child: roleField),
+                          ],
+                        );
+                      },
                     ),
                     const SizedBox(height: AppSpacing.md),
 

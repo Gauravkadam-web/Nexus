@@ -10,7 +10,7 @@ class AuditApi {
   Future<ApiResponse<List<AuditLogModel>>> getAuditLogs() async {
     try {
       final response = await _client.dio.get(ApiEndpoints.auditLogs);
-      final rawList = response.data['data'] as List<dynamic>? ?? [];
+      final rawList = ApiResponse.extractList(response.data['data']);
       final list = rawList.map((e) => AuditLogModel.fromJson(e as Map<String, dynamic>)).toList();
       return ApiResponse(success: true, data: list);
     } on DioException catch (e) {
@@ -23,7 +23,7 @@ class AuditApi {
   Future<ApiResponse<List<AuditLogModel>>> getCaseTimeline(String caseId) async {
     try {
       final response = await _client.dio.get(ApiEndpoints.auditLogCaseTimeline(caseId));
-      final rawList = response.data['data'] as List<dynamic>? ?? [];
+      final rawList = ApiResponse.extractList(response.data['data']);
       final list = rawList.map((e) => AuditLogModel.fromJson(e as Map<String, dynamic>)).toList();
       return ApiResponse(success: true, data: list);
     } on DioException catch (e) {

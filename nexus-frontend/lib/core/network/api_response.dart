@@ -25,4 +25,19 @@ class ApiResponse<T> {
       meta: json['meta'] as Map<String, dynamic>?,
     );
   }
+
+  /// Safely extracts a List<dynamic> from a raw List or Spring Data Page payload.
+  static List<dynamic> extractList(dynamic rawData) {
+    if (rawData == null) return [];
+    if (rawData is List) return rawData;
+    if (rawData is Map<String, dynamic>) {
+      if (rawData['content'] is List) {
+        return rawData['content'] as List<dynamic>;
+      }
+      if (rawData['data'] is List) {
+        return rawData['data'] as List<dynamic>;
+      }
+    }
+    return [];
+  }
 }

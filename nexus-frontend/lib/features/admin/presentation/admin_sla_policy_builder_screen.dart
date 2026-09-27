@@ -150,8 +150,11 @@ class _AdminSlaPolicyBuilderScreenState extends ConsumerState<AdminSlaPolicyBuil
   }
 
   Widget _buildPolicyHeaderActions(BuildContext context) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+    return Wrap(
+      alignment: WrapAlignment.spaceBetween,
+      crossAxisAlignment: WrapCrossAlignment.center,
+      spacing: 8,
+      runSpacing: 6,
       children: [
         Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -352,11 +355,14 @@ class _AdminSlaPolicyBuilderScreenState extends ConsumerState<AdminSlaPolicyBuil
             ],
           ),
           const SizedBox(height: 8),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          Wrap(
+            alignment: WrapAlignment.spaceBetween,
+            spacing: 12,
+            runSpacing: 8,
             children: [
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
                 children: [
                   const Text('First Touch Target', style: TextStyle(fontSize: 10, color: AppColors.textMuted)),
                   Text(firstTouch, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: AppColors.textPrimary)),
@@ -364,6 +370,7 @@ class _AdminSlaPolicyBuilderScreenState extends ConsumerState<AdminSlaPolicyBuil
               ),
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
                 children: [
                   const Text('Resolution Target', style: TextStyle(fontSize: 10, color: AppColors.textMuted)),
                   Text(resolution, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: AppColors.textPrimary)),
@@ -371,6 +378,7 @@ class _AdminSlaPolicyBuilderScreenState extends ConsumerState<AdminSlaPolicyBuil
               ),
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
                 children: [
                   const Text('Compliance Target', style: TextStyle(fontSize: 10, color: AppColors.textMuted)),
                   Text(score30d, style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: scoreColor)),

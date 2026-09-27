@@ -24,7 +24,7 @@ class AnalyticsApi {
   Future<ApiResponse<List<VolumeTrendModel>>> getVolumeTrends({int days = 7}) async {
     try {
       final response = await _client.dio.get('${ApiEndpoints.analyticsTrends}?days=$days');
-      final rawList = response.data['data'] as List<dynamic>? ?? [];
+      final rawList = ApiResponse.extractList(response.data['data']);
       final list = rawList.map((e) => VolumeTrendModel.fromJson(e as Map<String, dynamic>)).toList();
       return ApiResponse(success: true, data: list);
     } on DioException catch (e) {
@@ -37,7 +37,7 @@ class AnalyticsApi {
   Future<ApiResponse<List<OperationalInsightModel>>> getOperationalInsights() async {
     try {
       final response = await _client.dio.get(ApiEndpoints.analyticsOperationalInsights);
-      final rawList = response.data['data'] as List<dynamic>? ?? [];
+      final rawList = ApiResponse.extractList(response.data['data']);
       final list = rawList.map((e) => OperationalInsightModel.fromJson(e as Map<String, dynamic>)).toList();
       return ApiResponse(success: true, data: list);
     } on DioException catch (e) {

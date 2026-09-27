@@ -23,6 +23,8 @@ class UserModel {
   bool get isManager => roles.contains('MANAGER');
   bool get isAdmin => roles.contains('ADMIN') || roles.contains('ADMINISTRATOR');
 
+  String get role => primaryRole;
+
   String get primaryRole {
     if (isAdmin) return 'ADMIN';
     if (isManager) return 'MANAGER';

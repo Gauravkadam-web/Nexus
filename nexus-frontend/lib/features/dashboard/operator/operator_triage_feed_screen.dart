@@ -163,36 +163,43 @@ class _OperatorTriageFeedScreenState extends ConsumerState<OperatorTriageFeedScr
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Row(
-          children: [
-            Container(
-              width: 10,
-              height: 10,
-              decoration: const BoxDecoration(
-                color: Color(0xFF0D9488),
-                shape: BoxShape.circle,
+        Expanded(
+          child: Row(
+            children: [
+              Container(
+                width: 10,
+                height: 10,
+                decoration: const BoxDecoration(
+                  color: Color(0xFF0D9488),
+                  shape: BoxShape.circle,
+                ),
               ),
-            ),
-            const SizedBox(width: AppSpacing.xs),
-            Text(
-              'OPS-STATION // ALPHA',
-              style: AppTypography.codeSmall(context).copyWith(
-                fontWeight: FontWeight.bold,
-                letterSpacing: 1.2,
-                color: AppColors.textPrimary,
+              const SizedBox(width: AppSpacing.xs),
+              Expanded(
+                child: Text(
+                  'OPS-STATION // ALPHA',
+                  overflow: TextOverflow.ellipsis,
+                  style: AppTypography.codeSmall(context).copyWith(
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 1.2,
+                    color: AppColors.textPrimary,
+                  ),
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
         Row(
+          mainAxisSize: MainAxisSize.min,
           children: [
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
               decoration: BoxDecoration(
                 color: const Color(0xFFF2F3FF),
                 borderRadius: BorderRadius.circular(20),
               ),
               child: Row(
+                mainAxisSize: MainAxisSize.min,
                 children: [
                   const Icon(Icons.schedule, size: 14, color: AppColors.textSecondary),
                   const SizedBox(width: 4),
@@ -377,7 +384,7 @@ class _OperatorTriageFeedScreenState extends ConsumerState<OperatorTriageFeedScr
       mainAxisSpacing: AppSpacing.sm,
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
-      childAspectRatio: 1.35,
+      childAspectRatio: 1.15,
       children: [
         _buildKpiCard(
           title: 'Active Queue',
@@ -586,10 +593,14 @@ class _OperatorTriageFeedScreenState extends ConsumerState<OperatorTriageFeedScr
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          Wrap(
+            alignment: WrapAlignment.spaceBetween,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            spacing: 8,
+            runSpacing: 4,
             children: [
               Row(
+                mainAxisSize: MainAxisSize.min,
                 children: [
                   const Text('✨', style: TextStyle(fontSize: 14)),
                   const SizedBox(width: 6),
@@ -806,54 +817,66 @@ class _OperatorTriageFeedScreenState extends ConsumerState<OperatorTriageFeedScr
     IconData? fullWidthActionIcon,
     VoidCallback? onFullWidthAction,
   }) {
-    return Container(
-      padding: const EdgeInsets.all(AppSpacing.md),
-      decoration: BoxDecoration(
-        color: Colors.white,
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onPrimaryAction,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x04000000),
-            blurRadius: 8,
-            offset: Offset(0, 2),
+        child: Container(
+          padding: const EdgeInsets.all(AppSpacing.md),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: const Color(0xFFE2E8F0)),
+            boxShadow: const [
+              BoxShadow(
+                color: Color(0x04000000),
+                blurRadius: 8,
+                offset: Offset(0, 2),
+              ),
+            ],
           ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Row(
-                children: [
-                  Text(
-                    caseNumber,
-                    style: AppTypography.codeSmall(context).copyWith(
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.textPrimary,
-                    ),
-                  ),
-                  const SizedBox(width: AppSpacing.xs),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
-                    decoration: BoxDecoration(
-                      color: priorityBg,
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Text(
-                      priorityLabel.toUpperCase(),
-                      style: TextStyle(
-                        color: priorityTextCol,
-                        fontSize: 9,
-                        fontWeight: FontWeight.bold,
-                        letterSpacing: 0.5,
+          Row(
+            children: [
+              Expanded(
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Flexible(
+                      child: Text(
+                        caseNumber.length > 16 ? 'NEX-${caseNumber.substring(0, 8).toUpperCase()}' : caseNumber,
+                        overflow: TextOverflow.ellipsis,
+                        maxLines: 1,
+                        style: AppTypography.codeSmall(context).copyWith(
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.textPrimary,
+                        ),
                       ),
                     ),
-                  ),
-                ],
+                    const SizedBox(width: AppSpacing.xs),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: priorityBg,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Text(
+                        priorityLabel.toUpperCase(),
+                        style: TextStyle(
+                          color: priorityTextCol,
+                          fontSize: 9,
+                          fontWeight: FontWeight.bold,
+                          letterSpacing: 0.5,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
+              const SizedBox(width: AppSpacing.xs),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                 decoration: BoxDecoration(
@@ -892,16 +915,20 @@ class _OperatorTriageFeedScreenState extends ConsumerState<OperatorTriageFeedScr
             overflow: TextOverflow.ellipsis,
           ),
           const SizedBox(height: AppSpacing.sm),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          Wrap(
+            alignment: WrapAlignment.spaceBetween,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            spacing: 8,
+            runSpacing: 6,
             children: [
               Row(
+                mainAxisSize: MainAxisSize.min,
                 children: [
                   CircleAvatar(
                     radius: 12,
                     backgroundColor: AppColors.primary.withValues(alpha: 0.15),
                     child: Text(
-                      assigneeName[0],
+                      assigneeName.isNotEmpty ? assigneeName[0] : 'U',
                       style: const TextStyle(
                         color: AppColors.primary,
                         fontSize: 10,
@@ -912,6 +939,7 @@ class _OperatorTriageFeedScreenState extends ConsumerState<OperatorTriageFeedScr
                   const SizedBox(width: 6),
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
                     children: [
                       Text(
                         assigneeName,
@@ -939,6 +967,7 @@ class _OperatorTriageFeedScreenState extends ConsumerState<OperatorTriageFeedScr
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Row(
+                  mainAxisSize: MainAxisSize.min,
                   children: [
                     Icon(
                       Icons.hourglass_bottom,
@@ -1030,10 +1059,12 @@ class _OperatorTriageFeedScreenState extends ConsumerState<OperatorTriageFeedScr
                   ),
               ],
             ),
-        ],
+          ],
+        ),
       ),
-    );
-  }
+    ),
+  );
+}
 
   Widget _buildWarRoomBridgeBanner() {
     return Container(

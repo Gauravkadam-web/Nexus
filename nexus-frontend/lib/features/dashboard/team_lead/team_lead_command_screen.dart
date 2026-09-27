@@ -233,15 +233,19 @@ class _TeamLeadCommandScreenState extends ConsumerState<TeamLeadCommandScreen> {
                   children: [
                     const Icon(Icons.schedule, size: 14, color: AppColors.textMuted),
                     const SizedBox(width: 4),
-                    Text(
-                      'EMEA Core (08:00 - 16:00 UTC) • 8 Operators',
-                      style: AppTypography.bodySmall(context).copyWith(color: AppColors.textSecondary),
+                    Expanded(
+                      child: Text(
+                        'EMEA Core (08:00 - 16:00 UTC) • 8 Operators',
+                        overflow: TextOverflow.ellipsis,
+                        style: AppTypography.bodySmall(context).copyWith(color: AppColors.textSecondary),
+                      ),
                     ),
                   ],
                 ),
               ],
             ),
           ),
+          const SizedBox(width: AppSpacing.xs),
           InkWell(
             onTap: () => _showFeedbackToast('AI Auto-Rebalancing executed across all queues', Icons.auto_awesome, const Color(0xFF9333EA)),
             borderRadius: BorderRadius.circular(8),
@@ -288,7 +292,7 @@ class _TeamLeadCommandScreenState extends ConsumerState<TeamLeadCommandScreen> {
           mainAxisSpacing: AppSpacing.sm,
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
-          childAspectRatio: isWide ? 1.5 : 1.35,
+          childAspectRatio: isWide ? 1.5 : 1.15,
           children: [
             _buildVitalMetricCard(
               title: 'OPERATORS',
@@ -439,7 +443,10 @@ class _TeamLeadCommandScreenState extends ConsumerState<TeamLeadCommandScreen> {
                   ),
                 ),
                 const SizedBox(height: AppSpacing.sm),
-                Row(
+                Wrap(
+                  spacing: AppSpacing.sm,
+                  runSpacing: AppSpacing.xs,
+                  crossAxisAlignment: WrapCrossAlignment.center,
                   children: [
                     ElevatedButton.icon(
                       style: ElevatedButton.styleFrom(
@@ -456,7 +463,6 @@ class _TeamLeadCommandScreenState extends ConsumerState<TeamLeadCommandScreen> {
                         _showFeedbackToast('Workload rebalance applied successfully', Icons.check_circle, const Color(0xFF0D9488));
                       },
                     ),
-                    const SizedBox(width: AppSpacing.sm),
                     TextButton(
                       style: TextButton.styleFrom(
                         foregroundColor: AppColors.textSecondary,
