@@ -49,8 +49,8 @@ nexus:
     provider: ${STORAGE_PROVIDER:local}
     local-dir: ${STORAGE_LOCAL_DIR:uploads}
     supabase:
-      url: ${SUPABASE_URL:}
-      key: ${SUPABASE_SERVICE_ROLE_KEY:}
+      url: ${SUPABASE_URL:${SUPABASE_STORAGE_URL:}}
+      key: ${SUPABASE_SERVICE_ROLE_KEY:${SUPABASE_STORAGE_KEY:}}
       bucket: ${SUPABASE_STORAGE_BUCKET:nexus-attachments}
 
 
