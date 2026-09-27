@@ -43,7 +43,7 @@ class CaseModel {
   });
 
   factory CaseModel.fromJson(Map<String, dynamic> json) {
-    final status = json['status'] as String? ?? 'REPORTED';
+    final status = json['status']?.toString() ?? 'REPORTED';
     int step = 1;
     switch (status.toUpperCase()) {
       case 'REPORTED':
@@ -64,27 +64,90 @@ class CaseModel {
         break;
     }
 
+    // Category extraction (handles nested Map or String)
+    String categoryName = 'IT Support';
+    String categoryId = '';
+    if (json['category'] is Map) {
+      final catMap = json['category'] as Map<String, dynamic>;
+      categoryName = catMap['name']?.toString() ?? 'IT Support';
+      categoryId = catMap['id']?.toString() ?? '';
+    } else if (json['category'] is String) {
+      categoryName = json['category'] as String;
+    }
+    if (json['categoryName'] != null) {
+      categoryName = json['categoryName'].toString();
+    }
+    if (json['categoryId'] != null) {
+      categoryId = json['categoryId'].toString();
+    }
+
+    // Requester extraction (handles nested UserDto Map or String)
+    String requesterName = 'Requester';
+    String requesterId = '';
+    if (json['requester'] is Map) {
+      final reqMap = json['requester'] as Map<String, dynamic>;
+      requesterName = reqMap['name']?.toString() ?? 'Requester';
+      requesterId = reqMap['id']?.toString() ?? '';
+    } else if (json['requester'] is String) {
+      requesterName = json['requester'] as String;
+    }
+    if (json['requesterName'] != null) {
+      requesterName = json['requesterName'].toString();
+    }
+    if (json['requesterId'] != null) {
+      requesterId = json['requesterId'].toString();
+    }
+
+    // Assigned Operator extraction (handles nested UserDto Map or String)
+    String? assignedOperatorId;
+    String? assignedOperatorName;
+    if (json['assignedUser'] is Map) {
+      final userMap = json['assignedUser'] as Map<String, dynamic>;
+      assignedOperatorName = userMap['name']?.toString();
+      assignedOperatorId = userMap['id']?.toString();
+    }
+    if (json['assignedOperatorName'] != null) {
+      assignedOperatorName = json['assignedOperatorName'].toString();
+    } else if (json['assignedUserName'] != null) {
+      assignedOperatorName = json['assignedUserName'].toString();
+    }
+    if (json['assignedOperatorId'] != null) {
+      assignedOperatorId = json['assignedOperatorId'].toString();
+    } else if (json['assignedUserId'] != null) {
+      assignedOperatorId = json['assignedUserId'].toString();
+    }
+
+    // Assigned Team extraction (handles nested TeamDto Map or String)
+    String? assignedTeamName;
+    if (json['assignedTeam'] is Map) {
+      final teamMap = json['assignedTeam'] as Map<String, dynamic>;
+      assignedTeamName = teamMap['name']?.toString();
+    }
+    if (json['assignedTeamName'] != null) {
+      assignedTeamName = json['assignedTeamName'].toString();
+    }
+
     return CaseModel(
-      id: json['id'] as String? ?? '',
-      title: json['title'] as String? ?? '',
-      description: json['description'] as String? ?? '',
+      id: json['id']?.toString() ?? '',
+      title: json['title']?.toString() ?? '',
+      description: json['description']?.toString() ?? '',
       status: status,
-      severity: json['severity'] as String? ?? 'MEDIUM',
-      priority: json['priority'] as String?,
-      categoryId: json['categoryId'] as String? ?? '',
-      categoryName: json['categoryName'] as String? ?? json['category'] as String? ?? 'IT Support',
-      requesterId: json['requesterId'] as String? ?? '',
-      requesterName: json['requesterName'] as String? ?? 'Requester',
-      assignedOperatorId: json['assignedOperatorId'] as String?,
-      assignedOperatorName: json['assignedOperatorName'] as String?,
-      assignedTeamName: json['assignedTeamName'] as String?,
+      severity: json['severity']?.toString() ?? 'MEDIUM',
+      priority: json['priority']?.toString(),
+      categoryId: categoryId,
+      categoryName: categoryName,
+      requesterId: requesterId,
+      requesterName: requesterName,
+      assignedOperatorId: assignedOperatorId,
+      assignedOperatorName: assignedOperatorName,
+      assignedTeamName: assignedTeamName,
       createdAt: json['createdAt'] != null
           ? DateTime.tryParse(json['createdAt'].toString()) ?? DateTime.now()
           : DateTime.now(),
       updatedAt: json['updatedAt'] != null
           ? DateTime.tryParse(json['updatedAt'].toString()) ?? DateTime.now()
           : DateTime.now(),
-      actionRequiredNote: json['actionRequiredNote'] as String?,
+      actionRequiredNote: json['actionRequiredNote']?.toString(),
       milestoneStep: step,
     );
   }
@@ -139,16 +202,20 @@ class AiAnalysisModel {
 
   factory AiAnalysisModel.fromJson(Map<String, dynamic> json) {
     return AiAnalysisModel(
-      id: json['id'] as String?,
-      caseId: json['caseId'] as String?,
-      executiveSummary: json['executiveSummary'] as String? ?? json['summary'] as String? ?? json['aiDiagnosis'] as String?,
-      confidenceScore: (json['confidenceScore'] as num?)?.toDouble() ?? (json['confidence'] as num?)?.toDouble() ?? 0.88,
+      id: json['id']?.toString(),
+      caseId: json['caseId']?.toString(),
+      executiveSummary: json['executiveSummary']?.toString() ??
+          json['summary']?.toString() ??
+          json['aiDiagnosis']?.toString(),
+      confidenceScore: (json['confidenceScore'] as num?)?.toDouble() ??
+          (json['confidence'] as num?)?.toDouble() ??
+          0.88,
       suggestedSteps: (json['suggestedSteps'] as List<dynamic>?)?.map((e) => e.toString()).toList() ??
           (json['steps'] as List<dynamic>?)?.map((e) => e.toString()).toList() ??
           const [],
-      rootCauseHypothesis: json['rootCauseHypothesis'] as String? ?? json['hypothesis'] as String?,
-      suggestedPriority: json['suggestedPriority'] as String?,
-      suggestedCategory: json['suggestedCategory'] as String?,
+      rootCauseHypothesis: json['rootCauseHypothesis']?.toString() ?? json['hypothesis']?.toString(),
+      suggestedPriority: json['suggestedPriority']?.toString(),
+      suggestedCategory: json['suggestedCategory']?.toString(),
       riskFactors: (json['riskFactors'] as List<dynamic>?)?.map((e) => e.toString()).toList() ?? const [],
     );
   }

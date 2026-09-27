@@ -27,16 +27,19 @@ class ResolutionModel {
 
   factory ResolutionModel.fromJson(Map<String, dynamic> json) {
     return ResolutionModel(
-      id: json['id'] as String? ?? '',
-      caseId: json['caseId'] as String? ?? '',
-      summary: json['summary'] as String? ?? json['resolutionNotes'] as String? ?? '',
-      rootCause: json['rootCause'] as String?,
-      resolutionAction: json['resolutionAction'] as String?,
-      preventiveAction: json['preventiveAction'] as String?,
-      status: json['status'] as String? ?? 'PROPOSED',
-      proposedBy: json['proposedBy'] as String? ?? '',
-      confirmedBy: json['confirmedBy'] as String?,
-      rejectionReason: json['rejectionReason'] as String?,
+      id: json['id']?.toString() ?? '',
+      caseId: json['caseId']?.toString() ?? '',
+      summary: json['summary']?.toString() ??
+          json['resolutionNotes']?.toString() ??
+          json['whatWasDone']?.toString() ??
+          '',
+      rootCause: json['rootCause']?.toString() ?? json['findings']?.toString(),
+      resolutionAction: json['resolutionAction']?.toString() ?? json['resolutionMessage']?.toString(),
+      preventiveAction: json['preventiveAction']?.toString(),
+      status: json['status']?.toString() ?? json['requesterDecision']?.toString() ?? 'PROPOSED',
+      proposedBy: json['proposedBy']?.toString() ?? json['submittedByName']?.toString() ?? '',
+      confirmedBy: json['confirmedBy']?.toString(),
+      rejectionReason: json['rejectionReason']?.toString(),
       createdAt: json['createdAt'] != null
           ? DateTime.tryParse(json['createdAt'].toString()) ?? DateTime.now()
           : DateTime.now(),

@@ -122,6 +122,24 @@
 
 ---
 
+### K. Android Hardware Deployment & Native Impeller Vulkan Verification
+- [x] **Standalone Release APK (`app-release.apk`):** 68.1 MB binary compiled with `--dart-define=API_BASE_URL=https://nexus-h44p.onrender.com/api/v1/`, R8 code shrinking, and Font asset tree-shaking.
+- [x] **Physical Hardware Installation:** Successfully sideloaded onto Samsung Galaxy A21s (`RZ8R32JY8LM`) via ADB.
+- [x] **Impeller Vulkan Engine:** Verified native Vulkan backend initialization (`android_context_vk_impeller.cc`) on physical device with smooth 60fps rendering.
+- [x] **1-Click Mobile Persona Testing:** Instant test access buttons on mobile login for `Operator`, `Requester`, `Team Lead`, `Manager`, and `Admin`.
+- [x] **Mobile Shell Parity:** Slide-out Drawer and 5-destination role-specific Bottom Navigation Bar operational on mobile viewport.
+
+---
+
+### L. Route Collision Remediation & RBAC Authorization Expansion (`c053943`)
+- [x] **Route Aliases & Redirects:** Added `/cases/create` alias and GoRouter redirects for `/admin/sla-policies` -> `/admin/policies` and `/admin/audit` -> `/admin/audit-logs`.
+- [x] **Expanded Problem Management RBAC:** `ProblemController` opened to `OPERATOR` for KEDB lookups (`hasAnyRole('OPERATOR', 'TEAM_LEAD', 'MANAGER', 'ADMIN')`).
+- [x] **Expanded Admin User Directory RBAC:** `AdminUserController` opened to `TEAM_LEAD` for operator roster and capacity calculations.
+- [x] **Unassigned Operator Team Case Fallback:** `CaseService.listTeamCases` gracefully falls back to organization-wide cases when operator has null `teamId`.
+- [x] **Cloud Cold-Start Auto-Retry:** 60s Dio timeouts + automatic 2s delay retry interceptor for 503 and connection timeouts on Render backend.
+
+---
+
 ## 2. Pending Deep Testing / External Integrations (⏳)
 
 1. **Real AI Provider Live Testing (Phase 3):**
@@ -139,6 +157,4 @@
 5. **Scheduled SLA Automatic Breach Job (Phase 5):**
    - *Current State:* Spring `@Scheduled` cron job active.
    - *Pending:* Time-lapse testing to observe automatic `REPORTED` ➔ `ESCALATED` status shift when target expires.
-6. **Mobile Viewport Drawer Touch Interactions:**
-   - *Current State:* Responsive breakpoints configured in `ResponsiveLayout`.
-   - *Pending:* Physical Android device testing via USB APK install.
+

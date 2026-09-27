@@ -31,7 +31,9 @@
 | **Frontend Batch 9** | Audit Trail & Notification Center (SCR-17, SCR-18) | US-6, US-24, US-30, US-33, US-34 | ✅ Complete | Real API Ledger & Dispatch | Merged to `dev` |
 | **Option 2 RBAC** | **Pure Production Role-Based AppShell** | All Roles | ✅ Complete | Strict Role-Scoped Nav + Footer | Active on Frontend |
 | **Live Governance & Nav** | **Admin User API & Safe Nav Click Routing** | US-1, US-34, US-35 | ✅ Complete | AdminUserController + Safe AppShell Nav (Live Verified) | Merged to `dev` |
-| **Stitch Mobile Parity** | **Mobile BottomNav, Dynamic IPv4 & Zero-Overflow** | All Roles (Mobile) | ✅ Complete | Android IPv4 Resolver + `childAspectRatio: 1.15` + Debug APK Built | Merged to `dev` |
+| **Stitch Mobile Parity** | **Mobile BottomNav, Dynamic IPv4 & Zero-Overflow** | All Roles (Mobile) | ✅ Complete | Android IPv4 Resolver + `childAspectRatio: 1.15` + R8 AOT Build | Merged to `dev` |
+| **Mobile Hardware APK** | **Standalone Release APK on Physical Android Hardware** | Mobile Client | ✅ Complete | Standalone APK (68.1MB, Render Cloud Embedded) installed & verified on Samsung Galaxy device via ADB | Merged to `dev` & `main` |
+| **Route & RBAC Remediation**| **Route Collision Aliases, RBAC Access & Cold-Start Retry** | Core Architecture | ✅ Complete | Route redirects (`/admin/sla-policies`, `/cases/create`), Operator Problem access, TeamLead User access, 60s Dio retry | Merged to `dev` & `main` (`c053943`) |
 | **Cloud Deployment** | **Render Dockerfile, Vercel SPA Config & Supabase Storage** | Production Infra | ✅ Complete | Multi-Stage Java 21 Dockerfile, vercel.json, SupabaseStorageService (113/113 Tests Green) | Merged to `dev` & `main` (LIVE) |
 
 ---
@@ -170,5 +172,33 @@ Both the entire backend and Flutter frontend for all 35 user stories (US-1 throu
   - Automated build script `vercel-build.sh` with environment-driven `API_BASE_URL=https://nexus-h44p.onrender.com/api/v1/`.
   - Configured `CORS_ALLOWED_ORIGINS` to securely permit `https://nexus-weld-two.vercel.app,http://localhost:*,http://127.0.0.1:*`.
   - Verified demo persona auth compatibility against live cloud database (`admin@nexus.com`, `manager@nexus.com`, `lead@nexus.com`, `op@nexus.com`, `req@nexus.com`).
+
+### Android Hardware Release APK & Sideload Deployment (2026-09-27)
+- [x] **Standalone Release APK Compilation (`flutter build apk --release`)**:
+  - Compiled with `--dart-define=API_BASE_URL=https://nexus-h44p.onrender.com/api/v1/` to embed live cloud backend directly into the binary.
+  - Full R8 / ProGuard code shrinking, resource shrinking, and Font asset tree-shaking (reducing MaterialIcons by 98.6%).
+  - Generated artifact: [`d:\NEXUS\nexus-frontend\build\app\outputs\flutter-apk\app-release.apk`](file:///d:/NEXUS/nexus-frontend/build/app/outputs/flutter-apk/app-release.apk) (**68.1 MB**).
+  - Pre-signed with Android debug key for friction-free sideloading.
+- [x] **Physical Hardware Installation & Impeller Vulkan Verification**:
+  - Connected Samsung Galaxy A21s device (`RZ8R32JY8LM`) over USB with ADB authorization.
+  - Sideloaded and installed package `com.nexus.nexus_frontend` via `adb install -r`.
+  - App launched successfully on physical hardware via `am start`.
+  - Verified Impeller Vulkan rendering engine initialization (`android_context_vk_impeller.cc`), responsive 360px mobile viewport, and 1-Click quick test access chips for all 5 enterprise personas.
+
+### Core Route Collision, RBAC Scope & Cloud Cold-Start Remediation (2026-09-27 — `c053943`)
+- [x] **Routing Aliases & Collision Prevention (`app_router.dart`)**:
+  - Added `/cases/create` as an explicit route alias alongside `/cases/new`.
+  - Added route redirect from `/admin/sla-policies` to `/admin/policies`.
+  - Added route redirect from `/admin/audit` to `/admin/audit-logs`.
+- [x] **RBAC Method Security Expansion**:
+  - `ProblemController.java`: Opened `@PreAuthorize` on `GET /api/v1/problems` to include `'OPERATOR'` (`hasAnyRole('OPERATOR', 'TEAM_LEAD', 'MANAGER', 'ADMIN')`), allowing incident triage operators to consult KEDB problems.
+  - `AdminUserController.java`: Opened `@PreAuthorize` on `GET /api/v1/admin/users` to include `'TEAM_LEAD'` (`hasAnyRole('ADMIN', 'MANAGER', 'TEAM_LEAD')`), enabling team capacity calculation and operator rebalancing.
+  - `CaseService.java` & `CaseController.java`: Enhanced `listTeamCases` with automatic fallback to `category.organization_id` when the operator does not have a formal `assignedTeamId`, ensuring the triage queue never breaks or returns empty for unassigned team members.
+- [x] **Cloud Cold-Start Resilience Interceptor (`api_client.dart`)**:
+  - Increased connect & receive timeouts from 30s to 60s for both regular and refresh Dio instances.
+  - Integrated automated cold-start retry: On connection timeout or HTTP `503 Service Unavailable`, automatically retries the request once after 2 seconds before escalating.
+- [x] **Resilient Triage Queue State Handling (`case_state_provider.dart`)**:
+  - Decoupled `assignedCases` and `teamCases` failure states; if either source loads successfully, displays available cases without blocking the screen with an error banner.
+
 
 
