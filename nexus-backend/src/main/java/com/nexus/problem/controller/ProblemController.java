@@ -40,7 +40,7 @@ public class ProblemController {
      * List all problems in the organization.
      */
     @GetMapping
-    @PreAuthorize("hasAnyRole('TEAM_LEAD', 'MANAGER', 'ADMIN')")
+    @PreAuthorize("hasAnyRole('OPERATOR', 'TEAM_LEAD', 'MANAGER', 'ADMIN')")
     public ResponseEntity<ApiResponse<Page<ProblemResponse>>> listProblems(
             @RequestParam(required = false) ProblemStatus status,
             @AuthenticationPrincipal UserPrincipal principal,

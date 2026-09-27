@@ -77,11 +77,17 @@ class CaseNotifier extends StateNotifier<CaseState> {
     final assignedRes = await _repo.getAssignedCases();
     final teamRes = await _repo.getTeamCases();
 
+    final hasData = assignedRes.cases.isNotEmpty || teamRes.cases.isNotEmpty;
+    final bothFailed = !assignedRes.success && !teamRes.success;
+    final errorMessage = bothFailed
+        ? (assignedRes.error ?? teamRes.error ?? 'Failed to load triage queue')
+        : (hasData ? null : assignedRes.error);
+
     state = state.copyWith(
       isLoading: false,
       assignedCases: assignedRes.cases,
       teamCases: teamRes.cases,
-      errorMessage: assignedRes.error ?? teamRes.error,
+      errorMessage: errorMessage,
     );
   }
 

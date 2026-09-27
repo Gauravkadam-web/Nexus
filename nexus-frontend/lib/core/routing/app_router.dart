@@ -71,6 +71,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         builder: (context, state) => const CaseCreateWizardScreen(),
       ),
       GoRoute(
+        path: '/cases/create',
+        builder: (context, state) => const CaseCreateWizardScreen(),
+      ),
+      GoRoute(
         path: '/cases/:id/track',
         builder: (context, state) {
           final caseId = state.pathParameters['id'] ?? 'NEX-2026-0042';
@@ -138,11 +142,19 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: '/admin/policies',
         builder: (context, state) => const AdminSlaPolicyBuilderScreen(),
       ),
+      GoRoute(
+        path: '/admin/sla-policies',
+        redirect: (context, state) => '/admin/policies',
+      ),
 
       // Batch 9: Audit Trail Timeline (SCR-17) & Global Notification Center (SCR-18)
       GoRoute(
         path: '/admin/audit-logs',
         builder: (context, state) => const AuditTrailTimelineScreen(),
+      ),
+      GoRoute(
+        path: '/admin/audit',
+        redirect: (context, state) => '/admin/audit-logs',
       ),
       GoRoute(
         path: '/notifications',

@@ -34,7 +34,7 @@ public class AdminUserController {
      * @return list of UserDto wrapped in ApiResponse
      */
     @GetMapping
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'TEAM_LEAD')")
     public ResponseEntity<ApiResponse<List<UserDto>>> listUsers(
             @AuthenticationPrincipal UserPrincipal principal) {
         List<UserDto> users = userService.listUsers(principal.getOrganizationId());

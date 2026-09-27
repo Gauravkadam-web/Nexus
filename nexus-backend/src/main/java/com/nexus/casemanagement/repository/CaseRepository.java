@@ -39,6 +39,8 @@ public interface CaseRepository extends JpaRepository<Case, UUID>, JpaSpecificat
 
     List<Case> findByCategoryOrganizationId(UUID orgId);
 
+    Page<Case> findByCategoryOrganizationId(UUID orgId, Pageable pageable);
+
     long countByCategoryOrganizationId(UUID orgId);
 
     long countByCategoryOrganizationIdAndStatus(UUID orgId, CaseStatus status);

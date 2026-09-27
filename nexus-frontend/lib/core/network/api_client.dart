@@ -15,8 +15,8 @@ class ApiClient {
     dio = Dio(
       BaseOptions(
         baseUrl: AppConfig.apiBaseUrl,
-        connectTimeout: const Duration(seconds: 30),
-        receiveTimeout: const Duration(seconds: 30),
+        connectTimeout: const Duration(seconds: 60),
+        receiveTimeout: const Duration(seconds: 60),
         headers: {
           'Content-Type': 'application/json',
           'Accept': 'application/json',
@@ -47,6 +47,24 @@ class ApiClient {
               return handler.resolve(retryResponse);
             }
           }
+
+          // Cold start retry: if connection timeout or 503 service unavailable, retry once after a short delay
+          final isColdStart = error.type == DioExceptionType.connectionTimeout ||
+              error.response?.statusCode == 503;
+          final alreadyRetried = error.requestOptions.extra['cold_start_retried'] == true;
+
+          if (isColdStart && !alreadyRetried) {
+            error.requestOptions.extra['cold_start_retried'] = true;
+            debugPrint('[ApiClient] Cloud server cold-start detected. Retrying request to ${error.requestOptions.uri} in 2s...');
+            await Future.delayed(const Duration(seconds: 2));
+            try {
+              final retryResponse = await dio.fetch(error.requestOptions);
+              return handler.resolve(retryResponse);
+            } catch (e) {
+              // Fall through to normal error handling if retry fails
+            }
+          }
+
           return handler.next(error);
         },
       ),
@@ -61,8 +79,8 @@ class ApiClient {
 
       final refreshDio = Dio(BaseOptions(
         baseUrl: AppConfig.apiBaseUrl,
-        connectTimeout: const Duration(seconds: 30),
-        receiveTimeout: const Duration(seconds: 30),
+        connectTimeout: const Duration(seconds: 60),
+        receiveTimeout: const Duration(seconds: 60),
       ));
       final response = await refreshDio.post(
         '/auth/refresh',

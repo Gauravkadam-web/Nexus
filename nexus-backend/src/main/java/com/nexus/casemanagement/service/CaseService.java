@@ -126,8 +126,20 @@ public class CaseService {
 
     @Transactional(readOnly = true)
     public Page<CaseSummaryResponse> listTeamCases(UUID teamId, Pageable pageable) {
-        return caseRepository.findByAssignedTeamId(teamId, pageable)
-                .map(CaseSummaryResponse::fromEntity);
+        return listTeamCases(teamId, null, pageable);
+    }
+
+    @Transactional(readOnly = true)
+    public Page<CaseSummaryResponse> listTeamCases(UUID teamId, UUID orgId, Pageable pageable) {
+        if (teamId != null) {
+            return caseRepository.findByAssignedTeamId(teamId, pageable)
+                    .map(CaseSummaryResponse::fromEntity);
+        } else if (orgId != null) {
+            return caseRepository.findByCategoryOrganizationId(orgId, pageable)
+                    .map(CaseSummaryResponse::fromEntity);
+        } else {
+            return Page.empty(pageable);
+        }
     }
 
     @Transactional(readOnly = true)

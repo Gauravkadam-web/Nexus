@@ -95,18 +95,23 @@ public class CaseController {
      * US-5: Team Lead views team cases.
      */
     @GetMapping("/team")
-    @PreAuthorize("hasAnyRole('TEAM_LEAD', 'MANAGER', 'ADMIN')")
+    @PreAuthorize("hasAnyRole('OPERATOR', 'TEAM_LEAD', 'MANAGER', 'ADMIN')")
     public ResponseEntity<ApiResponse<Page<CaseSummaryResponse>>> getTeamCases(
-            @RequestParam UUID teamId,
+            @RequestParam(required = false) UUID teamId,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
             @RequestParam(defaultValue = "createdAt") String sortBy,
-            @RequestParam(defaultValue = "desc") String sortDir) {
+            @RequestParam(defaultValue = "desc") String sortDir,
+            @AuthenticationPrincipal UserPrincipal principal) {
 
         Sort sort = sortDir.equalsIgnoreCase("asc") ? Sort.by(sortBy).ascending() : Sort.by(sortBy).descending();
         Pageable pageable = PageRequest.of(page, size, sort);
 
-        Page<CaseSummaryResponse> cases = caseService.listTeamCases(teamId, pageable);
+        Page<CaseSummaryResponse> cases = caseService.listTeamCases(
+                teamId,
+                principal != null ? principal.getOrganizationId() : null,
+                pageable
+        );
         return ResponseEntity.ok(ApiResponse.success(cases, "Team cases retrieved successfully"));
     }
 
