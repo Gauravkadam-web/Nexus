@@ -1,8 +1,8 @@
 # Nexus — Project Progress Tracker
 
-> **Last Updated:** 2026-09-23  
-> **Current Strategy:** Backend-First Complete + Flutter Web Stitch Parity Complete + Pure Production RBAC & Real Database Binding!  
-> **Overall Status:** Full-Stack Nexus 100% Complete & Verified (Backend: 110/110 Unit Tests, 62/62 Live E2E Tests | Database: Flyway V1-V8 + V100/V101 Seed Migrations | Frontend: 18 Screens Wrapped in AppShell with Strict Role-Based RBAC Navigation, Unblocked Multi-Tab Routing & 0 Issues on `dart analyze`)
+> **Last Updated:** 2026-09-27  
+> **Current Strategy:** 100% Full-Stack Production Deployed on Cloud (Render + Vercel + Supabase) + Pure Production RBAC & Real Database Binding!  
+> **Overall Status:** Full-Stack Nexus 100% Complete & LIVE in Production (Backend Live on Render `https://nexus-h44p.onrender.com` | Frontend Live on Vercel `https://nexus-weld-two.vercel.app` | Database: Supabase PostgreSQL Flyway V1-V8 + V100/V101 | Cloud Storage: Supabase Storage Bucket `nexus-attachments` | 113/113 Unit Tests Green | 0 Issues on `dart analyze`)
 
 ---
 
@@ -32,7 +32,7 @@
 | **Option 2 RBAC** | **Pure Production Role-Based AppShell** | All Roles | ✅ Complete | Strict Role-Scoped Nav + Footer | Active on Frontend |
 | **Live Governance & Nav** | **Admin User API & Safe Nav Click Routing** | US-1, US-34, US-35 | ✅ Complete | AdminUserController + Safe AppShell Nav (Live Verified) | Merged to `dev` |
 | **Stitch Mobile Parity** | **Mobile BottomNav, Dynamic IPv4 & Zero-Overflow** | All Roles (Mobile) | ✅ Complete | Android IPv4 Resolver + `childAspectRatio: 1.15` + Debug APK Built | Merged to `dev` |
-| **Cloud Deployment** | **Render Dockerfile, Vercel SPA Config & Supabase Storage** | Production Infra | ✅ Complete | Multi-Stage Java 21 Dockerfile, vercel.json, SupabaseStorageService (113/113 Tests Green) | Active in Working Tree |
+| **Cloud Deployment** | **Render Dockerfile, Vercel SPA Config & Supabase Storage** | Production Infra | ✅ Complete | Multi-Stage Java 21 Dockerfile, vercel.json, SupabaseStorageService (113/113 Tests Green) | Merged to `dev` & `main` (LIVE) |
 
 ---
 
@@ -151,3 +151,24 @@ Both the entire backend and Flutter frontend for all 35 user stories (US-1 throu
 - [x] **RenderFlex Overflow Elimination Across All 7 KPI Grids**: Adjusted `childAspectRatio` from `1.35` to `1.15` across `operator_triage_feed_screen`, `sla_risk_radar_console_screen`, `problem_management_hub_screen`, `team_lead_command_screen`, `audit_trail_timeline_screen`, `executive_analytics_kpi_screen`, and `admin_user_management_screen`.
 - [x] **Clean Static Analysis & Test Verification**: `dart analyze` — **0 issues found**; `flutter test` — **100% passed** (all 3 interactive responsive & component suites green).
 - [x] **Debug APK Artifact Generation**: Successfully compiled standalone Android Debug APK (`d:\NEXUS\nexus-frontend\build\app\outputs\flutter-apk\app-debug.apk`) ready for physical hardware deployment.
+
+### Live Cloud Production Deployment (Render + Vercel + Supabase) (2026-09-27)
+- [x] **Backend Multi-Stage Dockerfile & Render Live Deployment**:
+  - Live API: `https://nexus-h44p.onrender.com`
+  - Java 21 container with non-privileged user and container memory optimization (`-XX:MaxRAMPercentage=75.0`).
+  - Render blueprint `render.yaml` with port `10000` binding and health endpoint `/api/v1/health`.
+  - Verified live endpoint: `GET https://nexus-h44p.onrender.com/api/v1/health` returning `200 OK` (`"status":"UP"`).
+  - Live Swagger UI active at `https://nexus-h44p.onrender.com/swagger-ui/index.html`.
+- [x] **Database & Cloud Storage (Supabase)**:
+  - Managed PostgreSQL connected via Supabase pooler on port 5432 with SSL (`sslmode=require`).
+  - Flyway migrations V1–V8 + V100/V101 seed data automatically executed on startup.
+  - Supabase Storage bucket `nexus-attachments` integrated with REST API multipart upload (`SupabaseStorageService.java`) with local disk fallback.
+  - Automated test coverage expanded to **113/113 passed tests** (`SupabaseStorageServiceTest` 3/3 passed).
+- [x] **Frontend Production Deployment (Vercel)**:
+  - Live Portal: `https://nexus-weld-two.vercel.app/#/auth/login`
+  - Configured `vercel.json` with SPA routing rewrites (`/(.*)` -> `/index.html`), security headers, and asset caching.
+  - Automated build script `vercel-build.sh` with environment-driven `API_BASE_URL=https://nexus-h44p.onrender.com/api/v1/`.
+  - Configured `CORS_ALLOWED_ORIGINS` to securely permit `https://nexus-weld-two.vercel.app,http://localhost:*,http://127.0.0.1:*`.
+  - Verified demo persona auth compatibility against live cloud database (`admin@nexus.com`, `manager@nexus.com`, `lead@nexus.com`, `op@nexus.com`, `req@nexus.com`).
+
+

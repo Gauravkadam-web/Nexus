@@ -107,9 +107,18 @@
 ---
 
 ### I. Automated Testing & Verification
-- [x] **Backend Test Suite:** 110/110 passing unit & integration tests (`./mvnw verify`).
+- [x] **Backend Test Suite:** 113/113 passing unit & integration tests (`mvn test`, including `SupabaseStorageServiceTest`).
 - [x] **PostgreSQL E2E Checks:** 62/62 live database integrity tests passing.
 - [x] **Frontend Static Analysis:** `dart analyze` reports **0 errors and 0 warnings** (`No issues found!`).
+- [x] **Frontend Widget Tests:** 5/5 passed interactive component & responsive layout tests.
+
+---
+
+### J. Live Cloud Production Deployment (Render + Vercel + Supabase)
+- [x] **Render Web Service (Spring Boot 3.3.4 + Java 21):** Live at `https://nexus-h44p.onrender.com` (`GET /api/v1/health` returning 200 OK `"status":"UP"`, Swagger UI active at `/swagger-ui/index.html`).
+- [x] **Vercel Web Portal (Flutter Web SPA):** Live at `https://nexus-weld-two.vercel.app/#/auth/login` (SPA routing active, connected to Render API via `API_BASE_URL`).
+- [x] **Supabase Cloud PostgreSQL:** Live connected via Session Pooler on port 5432, Flyway V1–V8 + V100/V101 demo personas initialized.
+- [x] **Supabase Cloud Storage:** Bucket `nexus-attachments` integrated with REST API multipart upload and local fallback.
 
 ---
 
@@ -119,8 +128,8 @@
    - *Current State:* Running resiliently on `MockAiProvider` fallback.
    - *Pending:* Setting real `GEMINI_API_KEY` or `OPENAI_API_KEY` in backend `.env` to verify dynamic streaming tokens, prompt defense, and multi-turn drafting.
 2. **Supabase Storage Real Binary File Uploads:**
-   - *Current State:* Metadata and file attachments saved locally/in DB.
-   - *Pending:* Real multi-part binary stream upload of large PDFs/images (>10MB) to live Supabase S3 storage bucket.
+   - *Current State:* `SupabaseStorageService.java` active and wired to `nexus-attachments` bucket.
+   - *Pending:* End-to-end multi-part binary upload verification from live Vercel UI to Supabase bucket.
 3. **Brevo Live Email Notifications:**
    - *Current State:* Email dispatch falls back to structured JSON logging.
    - *Pending:* Setting `BREVO_API_KEY` to verify inbox delivery of assignment and SLA breach alerts.

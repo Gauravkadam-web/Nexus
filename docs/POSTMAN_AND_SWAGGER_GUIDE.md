@@ -24,11 +24,16 @@ Jab console par `Started NexusApplication in X.XX seconds` message aa jaye, aapk
 Swagger UI browser me visually sare endpoints ko explore aur test karne ka sabse fast tareeka hai.
 
 ### 1. Swagger UI Open Karein
-Browser me open karein:
-👉 **[http://localhost:8080/swagger-ui.html](http://localhost:8080/swagger-ui.html)**
 
-Raw OpenAPI JSON specification:
-👉 **[http://localhost:8080/v3/api-docs](http://localhost:8080/v3/api-docs)**
+**Live Cloud Production (Render):**
+👉 **[https://nexus-h44p.onrender.com/swagger-ui/index.html](https://nexus-h44p.onrender.com/swagger-ui/index.html)**  
+Raw OpenAPI JSON: **[https://nexus-h44p.onrender.com/v3/api-docs](https://nexus-h44p.onrender.com/v3/api-docs)**  
+Live Health Check: **[https://nexus-h44p.onrender.com/api/v1/health](https://nexus-h44p.onrender.com/api/v1/health)**  
+
+**Local Development:**
+👉 **[http://localhost:8080/swagger-ui.html](http://localhost:8080/swagger-ui.html)**  
+Raw OpenAPI JSON: **[http://localhost:8080/v3/api-docs](http://localhost:8080/v3/api-docs)**  
+
 
 ---
 
