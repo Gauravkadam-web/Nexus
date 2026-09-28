@@ -33,11 +33,11 @@ class AppConfig {
     return 'https://nexus-weld-two.vercel.app/downloads/nexus-release.apk';
   }
 
-  /// Environment-driven download URL for Windows Client
+  /// Environment-driven download URL for Windows Client (.exe Setup Installer)
   static String get windowsExeDownloadUrl {
     const fromEnv = String.fromEnvironment('APP_DOWNLOAD_WINDOWS_URL');
     if (fromEnv.isNotEmpty) return fromEnv;
-    return 'https://nexus-weld-two.vercel.app/downloads/nexus-windows-setup.zip';
+    return 'https://github.com/Gauravkadam-web/Nexus-/releases/download/v1.0.0/nexus-windows-setup.exe';
   }
 }
 

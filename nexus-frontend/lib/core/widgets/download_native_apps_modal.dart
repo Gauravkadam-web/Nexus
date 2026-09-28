@@ -175,7 +175,7 @@ class DownloadNativeAppsModal extends StatelessWidget {
                   border: Border.all(color: context.border),
                 ),
                 child: Text(
-                  'v1.0.0 (x64)',
+                  'v1.0.0 Setup (.exe)',
                   style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: context.textSecondary),
                 ),
               ),
@@ -188,9 +188,10 @@ class DownloadNativeAppsModal extends StatelessWidget {
           const SizedBox(height: AppSpacing.md),
 
           // Features List
-          _buildFeatureBullet(context, isDark, Icons.bolt, 'Native Win32 hardware rendering'),
-          _buildFeatureBullet(context, isDark, Icons.notifications_active, 'System tray & desktop alert badge'),
-          _buildFeatureBullet(context, isDark, Icons.offline_bolt, 'Offline cached workstation mode'),
+          _buildFeatureBullet(context, isDark, Icons.install_desktop, 'Single-file setup wizard installer (.exe)'),
+          _buildFeatureBullet(context, isDark, Icons.bolt, 'Native Win32 hardware acceleration'),
+          _buildFeatureBullet(context, isDark, Icons.desktop_windows, 'Automatic Desktop icon & Start menu search'),
+          _buildFeatureBullet(context, isDark, Icons.notifications_active, 'System tray alerts & offline workstation mode'),
           const SizedBox(height: AppSpacing.lg),
 
           // Download CTA Button
@@ -206,7 +207,7 @@ class DownloadNativeAppsModal extends StatelessWidget {
                 elevation: 0,
               ),
               icon: const Icon(Icons.download, size: 18),
-              label: const Text('Download for Windows', style: TextStyle(fontWeight: FontWeight.bold)),
+              label: const Text('Download Windows Setup (.exe)', style: TextStyle(fontWeight: FontWeight.bold)),
             ),
           ),
         ],

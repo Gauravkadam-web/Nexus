@@ -1,0 +1,76 @@
+name: Build & Release Windows Desktop Client (.exe)
+
+on:
+  workflow_dispatch: # Manual 1-click trigger from GitHub Actions UI
+  push:
+    branches:
+      - main
+    paths:
+      - 'nexus-frontend/**'
+      - '.github/workflows/build-windows-exe.yml'
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  build-windows:
+    name: Build Windows 64-bit Setup Installer
+    runs-on: windows-latest
+    defaults:
+      run:
+        working-directory: nexus-frontend
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+          cache: true
+
+      - name: Verify Flutter & Environment
+        run: flutter doctor -v
+
+      - name: Install Inno Setup
+        run: choco install innosetup --no-progress
+
+      - name: Install Flutter Dependencies
+        run: flutter pub get
+
+      - name: Build Flutter Windows Release
+        run: |
+          flutter build windows --release --dart-define=API_BASE_URL=https://nexus-h44p.onrender.com/api/v1/
+
+      - name: Compile Inno Setup Installer (.exe)
+        run: |
+          & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" windows/installer/nexus_setup.iss
+
+      - name: Verify Output Installer
+        run: |
+          Get-ChildItem -Path web/downloads/ -Filter *.exe -Recurse | Format-Table Name, Length, LastWriteTime
+
+      - name: Upload Windows Setup Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: nexus-windows-setup-exe
+          path: nexus-frontend/web/downloads/nexus-windows-setup.exe
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Publish to GitHub Releases
+        if: startsWith(github.ref, 'refs/tags/v') || github.ref == 'refs/heads/main'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || 'v1.0.0' }}
+          name: Nexus Native Releases (${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || 'v1.0.0' }})
+          files: |
+            nexus-frontend/web/downloads/nexus-windows-setup.exe
+            nexus-frontend/web/downloads/nexus-release.apk
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

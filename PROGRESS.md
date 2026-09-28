@@ -242,3 +242,25 @@ Both the entire backend and Flutter frontend for all 35 user stories (US-1 throu
 - [x] **Quality Gate Verification**:
   - `dart analyze` — **0 issues found** (100% clean).
   - `flutter test` — **100% passed** (3/3 suites green).
+
+### Native Apps Distribution & Windows Setup .exe CI/CD (2026-09-28)
+- [x] **Standalone Release APK (68.5 MB)**:
+  - Compiled release APK with embedded cloud backend URL (`https://nexus-h44p.onrender.com/api/v1/`).
+  - Tested live on physical Samsung Galaxy A21s hardware.
+  - Copied to `web/downloads/nexus-release.apk` for direct static Vercel CDN hosting.
+- [x] **In-App Distribution System**:
+  - `DownloadNativeAppsModal`: Dual-platform modal with QR code camera scanner (`qr_flutter`) and dark mode tokens.
+  - `DownloadsScreen`: Dedicated public standalone route at `/downloads`.
+  - Public touchpoint in `LoginScreen` footer and authenticated touchpoints in `AppShell` command bar + profile dropdown.
+- [x] **Windows Single-File Setup Installer (`nexus-windows-setup.exe`)**:
+  - Inno Setup configuration (`windows/installer/nexus_setup.iss`) with lowest-privilege execution (`AppData\Local\Programs\Nexus`).
+  - Automatic Desktop shortcut and Start Menu search indexing.
+  - High-compression LZMA2 packaging (~25–35 MB output).
+- [x] **GitHub Actions CI/CD Cloud Pipeline (`build-windows-exe.yml`)**:
+  - Automated Windows 64-bit compilation on `windows-latest` with pre-installed Visual Studio 2022 C++ toolchain (0 GB local disk usage).
+  - Automatic Inno Setup installer compilation and artifact upload.
+  - Auto-publishing of `.exe` installer and `.apk` to GitHub Releases on `main` branch pushes / version tags.
+- [x] **Quality Gate Verification**:
+  - `dart analyze` — **0 issues found** (100% clean).
+  - `flutter test` — **100% passed** (3/3 suites green).
+
