@@ -47,7 +47,13 @@ jobs:
 
       - name: Compile Inno Setup Installer (.exe)
         run: |
-          & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" windows/installer/nexus_setup.iss
+          $iscc = (Get-Command iscc -ErrorAction SilentlyContinue)?.Source
+          if (-not $iscc) {
+            $iscc = (Get-ChildItem 'C:\Program Files*\Inno Setup*\ISCC.exe' -ErrorAction SilentlyContinue | Select-Object -First 1 -ExpandProperty FullName)
+          }
+          if (-not $iscc) { $iscc = "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" }
+          Write-Host "Using Inno Setup Compiler at: $iscc"
+          & "$iscc" windows/installer/nexus_setup.iss
 
       - name: Verify Output Installer
         run: |
