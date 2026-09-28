@@ -13,6 +13,7 @@ import '../../features/copilot/presentation/ai_copilot_smart_drafter_screen.dart
 import '../../features/dashboard/operator/operator_triage_feed_screen.dart';
 import '../../features/dashboard/requester/requester_dashboard_screen.dart';
 import '../../features/dashboard/team_lead/team_lead_command_screen.dart';
+import '../../features/downloads/presentation/downloads_screen.dart';
 import '../../features/investigation/presentation/operator_investigation_studio_screen.dart';
 import '../../features/notification/presentation/global_notification_center_screen.dart';
 import '../../features/problem/presentation/problem_management_hub_screen.dart';
@@ -23,6 +24,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
   return GoRouter(
     initialLocation: '/auth/login',
     routes: [
+      // Public Downloads Route
+      GoRoute(
+        path: '/downloads',
+        builder: (context, state) => const DownloadsScreen(),
+      ),
       // Auth routes (SCR-01 & SCR-02)
       GoRoute(
         path: '/auth/login',

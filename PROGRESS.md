@@ -36,6 +36,7 @@
 | **Route & RBAC Remediation**| **Route Collision Aliases, RBAC Access & Cold-Start Retry** | Core Architecture | ✅ Complete | Route redirects (`/admin/sla-policies`, `/cases/create`), Operator Problem access, TeamLead User access, 60s Dio retry | Merged to `dev` & `main` (`c053943`) |
 | **Workbench Resilience** | **Indefinite Loading Spinner Elimination & Timeout Hardening** | US-2, US-3, US-6, US-7, US-15, US-26 | ✅ Complete | Dart Record `.data`/`.caseItem` + 8s Timeouts + Demo Fallbacks (100% Green) | Merged to `dev` & `main` |
 | **Mobile Multi-Role & Tokenization** | **360px Viewport Hardening, Zero-CLS Shimmers & Dark Theme Tokens** | All 5 Roles | ✅ Complete | Adaptive 2x2 grids, stacked mobile action suites, zero-CLS shimmers, tokenized dark mode | `dev` |
+| **Native Apps Distribution** | **Windows .exe & Android .apk In-App Modal with QR Code & /downloads** | All Roles + Public | ✅ Complete | DownloadNativeAppsModal + QR Scanner + /downloads screen + Login footer | `dev` |
 | **Cloud Deployment** | **Render Dockerfile, Vercel SPA Config & Supabase Storage** | Production Infra | ✅ Complete | Multi-Stage Java 21 Dockerfile, vercel.json, SupabaseStorageService (113/113 Tests Green) | Merged to `dev` & `main` (LIVE) |
 
 ---

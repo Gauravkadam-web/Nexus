@@ -6,6 +6,7 @@ import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../core/widgets/nexus_button.dart';
 import '../../../core/widgets/responsive_layout.dart';
+import '../../../core/widgets/download_native_apps_modal.dart';
 import 'auth_state_provider.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
@@ -492,6 +493,38 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   ],
                 ),
               ],
+            ),
+          ),
+          const SizedBox(height: AppSpacing.lg),
+
+          // Native Apps Download Pill
+          Center(
+            child: InkWell(
+              onTap: () => DownloadNativeAppsModal.show(context),
+              borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                child: Wrap(
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  alignment: WrapAlignment.center,
+                  spacing: 6,
+                  children: [
+                    Icon(
+                      Icons.install_mobile,
+                      size: 15,
+                      color: isDark ? AppColors.accentPrimaryDark : AppColors.accentPrimary,
+                    ),
+                    Text(
+                      'Get Native Apps (.exe / .apk) →',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: isDark ? AppColors.accentPrimaryDark : AppColors.accentPrimary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             ),
           ),
         ],

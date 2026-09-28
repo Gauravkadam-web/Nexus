@@ -25,5 +25,19 @@ class AppConfig {
 
   static const String appName = 'Nexus Case Management';
   static const String appVersion = 'v3.0';
+
+  /// Environment-driven download URL for Android APK
+  static String get androidApkDownloadUrl {
+    const fromEnv = String.fromEnvironment('APP_DOWNLOAD_ANDROID_URL');
+    if (fromEnv.isNotEmpty) return fromEnv;
+    return 'https://nexus-weld-two.vercel.app/downloads/nexus-release.apk';
+  }
+
+  /// Environment-driven download URL for Windows Client
+  static String get windowsExeDownloadUrl {
+    const fromEnv = String.fromEnvironment('APP_DOWNLOAD_WINDOWS_URL');
+    if (fromEnv.isNotEmpty) return fromEnv;
+    return 'https://nexus-weld-two.vercel.app/downloads/nexus-windows-setup.zip';
+  }
 }
 

@@ -5,6 +5,7 @@ import '../../../app.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_spacing.dart';
 import '../theme/app_typography.dart';
+import 'download_native_apps_modal.dart';
 import '../../features/auth/presentation/auth_state_provider.dart';
 
 class AppShell extends ConsumerStatefulWidget {
@@ -78,6 +79,11 @@ class _AppShellState extends ConsumerState<AppShell> {
                 ref.read(themeModeProvider.notifier).state =
                     isDark ? ThemeMode.light : ThemeMode.dark;
               },
+            ),
+            IconButton(
+              icon: const Icon(Icons.install_mobile, size: 20),
+              tooltip: 'Get Native Apps',
+              onPressed: () => DownloadNativeAppsModal.show(context),
             ),
             IconButton(
               icon: const Icon(Icons.notifications_outlined, size: 22),
@@ -276,6 +282,17 @@ class _AppShellState extends ConsumerState<AppShell> {
                 onPressed: () => context.go('/notifications'),
               ),
 
+              // Get Native Apps Button
+              IconButton(
+                icon: Icon(
+                  Icons.install_mobile,
+                  size: 20,
+                  color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
+                ),
+                tooltip: 'Get Windows & Android Apps',
+                onPressed: () => DownloadNativeAppsModal.show(context),
+              ),
+
               Container(
                 height: 24,
                 width: 1,
@@ -292,7 +309,9 @@ class _AppShellState extends ConsumerState<AppShell> {
                 ),
                 color: isDark ? AppColors.darkSurface : AppColors.lightSurface,
                 onSelected: (val) {
-                  if (val == 'logout') {
+                  if (val == 'downloads') {
+                    DownloadNativeAppsModal.show(context);
+                  } else if (val == 'logout') {
                     ref.read(authStateProvider.notifier).logout();
                     context.go('/auth/login');
                   }
@@ -305,6 +324,16 @@ class _AppShellState extends ConsumerState<AppShell> {
                         const Icon(Icons.person_outline, size: 18),
                         const SizedBox(width: 8),
                         Text('Signed in as ${user?.email ?? 'User'}', style: AppTypography.bodySmall(isDark)),
+                      ],
+                    ),
+                  ),
+                  PopupMenuItem(
+                    value: 'downloads',
+                    child: Row(
+                      children: [
+                        const Icon(Icons.install_mobile, size: 18),
+                        const SizedBox(width: 8),
+                        Text('Get Native Apps (.exe / .apk)', style: AppTypography.bodySmall(isDark)),
                       ],
                     ),
                   ),
