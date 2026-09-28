@@ -9,6 +9,7 @@ import '../../../core/theme/app_typography.dart';
 import '../../../core/widgets/app_shell.dart';
 import '../../../core/widgets/responsive_layout.dart';
 import '../../../core/widgets/state_view_helpers.dart';
+import '../../../core/theme/theme_context_extensions.dart';
 import '../../case/domain/case_model.dart';
 import '../../case/presentation/case_state_provider.dart';
 
@@ -758,36 +759,41 @@ class _OperatorTriageFeedScreenState extends ConsumerState<OperatorTriageFeedScr
       );
     }
 
-    return Column(
-      children: sourceList.map((c) {
-        final isCritical = c.severity == 'CRITICAL';
-        return Padding(
-          padding: const EdgeInsets.only(bottom: AppSpacing.sm),
-          child: _buildFeedCard(
-            caseNumber: c.id,
-            priorityLabel: isCritical ? 'P1 Critical' : '${c.severity} Priority',
-            priorityBg: isCritical ? const Color(0xFFFFE4E6) : const Color(0xFFFEF3C7),
-            priorityTextCol: isCritical ? const Color(0xFFE11D48) : const Color(0xFFD97706),
-            statusLabel: c.status,
-            statusBg: const Color(0xFFEEF2FF),
-            statusTextCol: AppColors.accentPrimary,
-            title: c.title,
-            description: c.description,
-            assigneeName: c.assignedOperatorName ?? 'Unassigned',
-            assigneeRole: 'Case Operator',
-            slaCountdown: isCritical ? '15m SLA Target' : '4h SLA Target',
-            slaBg: isCritical ? const Color(0xFFFFE4E6) : const Color(0xFFEEF2FF),
-            slaTextCol: isCritical ? const Color(0xFFE11D48) : AppColors.accentPrimary,
-            slaPulse: isCritical,
-            secondaryActionText: 'Reassign',
-            onSecondaryAction: () => _showFeedbackToast('Reassignment matrix opened for ${c.id}', Icons.swap_horiz, AppColors.accentPrimary),
-            primaryActionText: 'Open Studio',
-            onPrimaryAction: () {
-              context.push('/cases/${c.id}/investigation');
-            },
-          ),
-        );
-      }).toList(),
+    return RefreshIndicator(
+      onRefresh: () async {
+        await ref.read(caseStateProvider.notifier).loadOperatorTriageData();
+      },
+      child: Column(
+        children: sourceList.map((c) {
+          final isCritical = c.severity == 'CRITICAL';
+          return Padding(
+            padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+            child: _buildFeedCard(
+              caseNumber: c.id,
+              priorityLabel: isCritical ? 'P1 Critical' : '${c.severity} Priority',
+              priorityBg: isCritical ? const Color(0xFFFFE4E6) : const Color(0xFFFEF3C7),
+              priorityTextCol: isCritical ? const Color(0xFFE11D48) : const Color(0xFFD97706),
+              statusLabel: c.status,
+              statusBg: const Color(0xFFEEF2FF),
+              statusTextCol: AppColors.accentPrimary,
+              title: c.title,
+              description: c.description,
+              assigneeName: c.assignedOperatorName ?? 'Unassigned',
+              assigneeRole: 'Case Operator',
+              slaCountdown: isCritical ? '15m SLA Target' : '4h SLA Target',
+              slaBg: isCritical ? const Color(0xFFFFE4E6) : const Color(0xFFEEF2FF),
+              slaTextCol: isCritical ? const Color(0xFFE11D48) : AppColors.accentPrimary,
+              slaPulse: isCritical,
+              secondaryActionText: 'Reassign',
+              onSecondaryAction: () => _showFeedbackToast('Reassignment matrix opened for ${c.id}', Icons.swap_horiz, AppColors.accentPrimary),
+              primaryActionText: 'Open Studio',
+              onPrimaryAction: () {
+                context.push('/cases/${c.id}/investigation');
+              },
+            ),
+          );
+        }).toList(),
+      ),
     );
   }
 
@@ -825,9 +831,9 @@ class _OperatorTriageFeedScreenState extends ConsumerState<OperatorTriageFeedScr
         child: Container(
           padding: const EdgeInsets.all(AppSpacing.md),
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: context.cardBg,
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: const Color(0xFFE2E8F0)),
+            border: Border.all(color: context.border),
             boxShadow: const [
               BoxShadow(
                 color: Color(0x04000000),
@@ -1010,55 +1016,109 @@ class _OperatorTriageFeedScreenState extends ConsumerState<OperatorTriageFeedScr
               ),
             )
           else
-            Row(
-              children: [
-                if (secondaryActionText != null)
-                  Expanded(
-                    flex: 4,
-                    child: SizedBox(
-                      height: 36,
-                      child: OutlinedButton.icon(
-                        onPressed: onSecondaryAction,
-                        icon: secondaryIcon != null ? Icon(secondaryIcon, size: 14) : null,
-                        label: Text(
-                          secondaryActionText,
-                          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+            LayoutBuilder(
+              builder: (context, constraints) {
+                final isNarrow = constraints.maxWidth < 340;
+                if (isNarrow) {
+                  return Column(
+                    children: [
+                      if (secondaryActionText != null)
+                        SizedBox(
+                          width: double.infinity,
+                          height: 38,
+                          child: OutlinedButton.icon(
+                            onPressed: onSecondaryAction,
+                            icon: secondaryIcon != null ? Icon(secondaryIcon, size: 14) : null,
+                            label: Text(
+                              secondaryActionText,
+                              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+                            ),
+                            style: OutlinedButton.styleFrom(
+                              backgroundColor: context.surfaceElevated,
+                              foregroundColor: context.textSecondary,
+                              side: BorderSide(color: context.border),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                              padding: const EdgeInsets.symmetric(horizontal: 8),
+                            ),
+                          ),
                         ),
-                        style: OutlinedButton.styleFrom(
-                          backgroundColor: const Color(0xFFF2F3FF),
-                          foregroundColor: AppColors.textSecondary,
-                          side: BorderSide.none,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                          padding: const EdgeInsets.symmetric(horizontal: 8),
+                      if (secondaryActionText != null && primaryActionText != null)
+                        const SizedBox(height: 6),
+                      if (primaryActionText != null)
+                        SizedBox(
+                          width: double.infinity,
+                          height: 38,
+                          child: ElevatedButton.icon(
+                            onPressed: onPrimaryAction,
+                            icon: primaryIcon != null ? Icon(primaryIcon, size: 14) : null,
+                            label: Text(
+                              primaryActionText,
+                              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.white),
+                            ),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: context.accent,
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                              elevation: 0,
+                              padding: const EdgeInsets.symmetric(horizontal: 8),
+                            ),
+                          ),
+                        ),
+                    ],
+                  );
+                }
+
+                return Row(
+                  children: [
+                    if (secondaryActionText != null)
+                      Expanded(
+                        flex: 4,
+                        child: SizedBox(
+                          height: 36,
+                          child: OutlinedButton.icon(
+                            onPressed: onSecondaryAction,
+                            icon: secondaryIcon != null ? Icon(secondaryIcon, size: 14) : null,
+                            label: Text(
+                              secondaryActionText,
+                              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+                            ),
+                            style: OutlinedButton.styleFrom(
+                              backgroundColor: context.surfaceElevated,
+                              foregroundColor: context.textSecondary,
+                              side: BorderSide(color: context.border),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                              padding: const EdgeInsets.symmetric(horizontal: 8),
+                            ),
+                          ),
                         ),
                       ),
-                    ),
-                  ),
-                if (secondaryActionText != null && primaryActionText != null)
-                  const SizedBox(width: AppSpacing.sm),
-                if (primaryActionText != null)
-                  Expanded(
-                    flex: 6,
-                    child: SizedBox(
-                      height: 36,
-                      child: ElevatedButton.icon(
-                        onPressed: onPrimaryAction,
-                        icon: primaryIcon != null ? Icon(primaryIcon, size: 14) : null,
-                        label: Text(
-                          primaryActionText,
-                          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.white),
-                        ),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF4648D4),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                          elevation: 0,
-                          padding: const EdgeInsets.symmetric(horizontal: 8),
+                    if (secondaryActionText != null && primaryActionText != null)
+                      const SizedBox(width: AppSpacing.sm),
+                    if (primaryActionText != null)
+                      Expanded(
+                        flex: 6,
+                        child: SizedBox(
+                          height: 36,
+                          child: ElevatedButton.icon(
+                            onPressed: onPrimaryAction,
+                            icon: primaryIcon != null ? Icon(primaryIcon, size: 14) : null,
+                            label: Text(
+                              primaryActionText,
+                              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.white),
+                            ),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: context.accent,
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                              elevation: 0,
+                              padding: const EdgeInsets.symmetric(horizontal: 8),
+                            ),
+                          ),
                         ),
                       ),
-                    ),
-                  ),
-              ],
+                  ],
+                );
+              },
             ),
+
           ],
         ),
       ),

@@ -8,6 +8,7 @@ import '../../../core/theme/app_typography.dart';
 import '../../../core/widgets/app_shell.dart';
 import '../../../core/widgets/responsive_layout.dart';
 import '../../../core/widgets/state_view_helpers.dart';
+import '../../../core/theme/theme_context_extensions.dart';
 import '../../admin/data/admin_api.dart';
 import '../../admin/domain/admin_models.dart';
 import '../../case/data/case_repository.dart';
@@ -343,9 +344,9 @@ class _TeamLeadCommandScreenState extends ConsumerState<TeamLeadCommandScreen> {
     return Container(
       padding: const EdgeInsets.all(AppSpacing.sm + 2),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: context.cardBg,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.borderLight),
+        border: Border.all(color: context.border),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -568,9 +569,9 @@ class _TeamLeadCommandScreenState extends ConsumerState<TeamLeadCommandScreen> {
     return Container(
       padding: const EdgeInsets.all(AppSpacing.sm + 2),
       decoration: BoxDecoration(
-        color: const Color(0xFFF8FAFC),
+        color: context.surfaceElevated,
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: AppColors.borderLight),
+        border: Border.all(color: context.border),
       ),
       child: Column(
         children: [
@@ -643,9 +644,9 @@ class _TeamLeadCommandScreenState extends ConsumerState<TeamLeadCommandScreen> {
     return Container(
       padding: const EdgeInsets.all(AppSpacing.md),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: context.cardBg,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.borderLight),
+        border: Border.all(color: context.border),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,

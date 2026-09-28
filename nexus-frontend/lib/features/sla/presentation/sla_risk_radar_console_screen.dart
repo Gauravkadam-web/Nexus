@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_typography.dart';
+import '../../../core/theme/theme_context_extensions.dart';
 import '../../../core/widgets/app_shell.dart';
 import '../../../core/widgets/responsive_layout.dart';
 import '../../../core/widgets/state_view_helpers.dart';
@@ -167,9 +168,9 @@ class _SlaRiskRadarConsoleScreenState extends ConsumerState<SlaRiskRadarConsoleS
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.sm),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: context.cardBg,
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: AppColors.borderLight),
+        border: Border.all(color: context.border),
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -197,10 +198,10 @@ class _SlaRiskRadarConsoleScreenState extends ConsumerState<SlaRiskRadarConsoleS
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                   decoration: BoxDecoration(
-                    color: const Color(0xFFF1F5F9),
+                    color: context.surfaceElevated,
                     borderRadius: BorderRadius.circular(4),
                   ),
-                  child: const Text('v4.19', style: TextStyle(fontSize: 10, color: AppColors.textSecondary, fontFamily: 'monospace')),
+                  child: Text('v4.19', style: TextStyle(fontSize: 10, color: context.textSecondary, fontFamily: 'monospace')),
                 ),
               ],
             ),
@@ -209,7 +210,7 @@ class _SlaRiskRadarConsoleScreenState extends ConsumerState<SlaRiskRadarConsoleS
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
             decoration: BoxDecoration(
-              color: const Color(0xFFEEF2FF),
+              color: context.isDark ? const Color(0xFF312E81) : const Color(0xFFEEF2FF),
               borderRadius: BorderRadius.circular(12),
             ),
             child: const Row(
@@ -242,6 +243,7 @@ class _SlaRiskRadarConsoleScreenState extends ConsumerState<SlaRiskRadarConsoleS
           childAspectRatio: isWide ? 1.5 : 1.15,
           children: [
             _buildKpiCard(
+              context,
               title: 'IMMINENT',
               value: '03',
               subtext: '<30m Critical',
@@ -250,6 +252,7 @@ class _SlaRiskRadarConsoleScreenState extends ConsumerState<SlaRiskRadarConsoleS
               icon: Icons.error_outline,
             ),
             _buildKpiCard(
+              context,
               title: 'WATCH',
               value: '07',
               subtext: '<2h Elevated',
@@ -258,6 +261,7 @@ class _SlaRiskRadarConsoleScreenState extends ConsumerState<SlaRiskRadarConsoleS
               icon: Icons.access_time,
             ),
             _buildKpiCard(
+              context,
               title: 'HEALTHY',
               value: '32',
               subtext: '76.2% On-Track',
@@ -266,6 +270,7 @@ class _SlaRiskRadarConsoleScreenState extends ConsumerState<SlaRiskRadarConsoleS
               icon: Icons.check_circle_outline,
             ),
             _buildKpiCard(
+              context,
               title: 'DEFENDED',
               value: '14',
               subtext: '100% Breaches Defended',
@@ -279,7 +284,8 @@ class _SlaRiskRadarConsoleScreenState extends ConsumerState<SlaRiskRadarConsoleS
     );
   }
 
-  Widget _buildKpiCard({
+  Widget _buildKpiCard(
+    BuildContext context, {
     required String title,
     required String value,
     required String subtext,
@@ -290,9 +296,9 @@ class _SlaRiskRadarConsoleScreenState extends ConsumerState<SlaRiskRadarConsoleS
     return Container(
       padding: const EdgeInsets.all(AppSpacing.sm + 2),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: context.cardBg,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.borderLight),
+        border: Border.all(color: context.border),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -303,10 +309,10 @@ class _SlaRiskRadarConsoleScreenState extends ConsumerState<SlaRiskRadarConsoleS
             children: [
               Text(
                 title,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 10,
                   fontWeight: FontWeight.w700,
-                  color: AppColors.textSecondary,
+                  color: context.textSecondary,
                   letterSpacing: 0.5,
                 ),
               ),
@@ -324,7 +330,7 @@ class _SlaRiskRadarConsoleScreenState extends ConsumerState<SlaRiskRadarConsoleS
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
             decoration: BoxDecoration(
-              color: bg,
+              color: context.isDark ? color.withValues(alpha: 0.2) : bg,
               borderRadius: BorderRadius.circular(4),
             ),
             child: Text(
@@ -345,9 +351,9 @@ class _SlaRiskRadarConsoleScreenState extends ConsumerState<SlaRiskRadarConsoleS
     return Container(
       padding: const EdgeInsets.all(AppSpacing.md),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: context.cardBg,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.borderLight),
+        border: Border.all(color: context.border),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -362,10 +368,10 @@ class _SlaRiskRadarConsoleScreenState extends ConsumerState<SlaRiskRadarConsoleS
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFF1F5F9),
+                  color: context.surfaceElevated,
                   borderRadius: BorderRadius.circular(4),
                 ),
-                child: const Text('42 Total', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppColors.textPrimary)),
+                child: Text('42 Total', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: context.textPrimary)),
               ),
             ],
           ),
@@ -378,7 +384,7 @@ class _SlaRiskRadarConsoleScreenState extends ConsumerState<SlaRiskRadarConsoleS
                 height: 68,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: const Color(0xFFCCFBF1),
+                  color: context.isDark ? const Color(0xFF064E3B) : const Color(0xFFCCFBF1),
                   border: Border.all(color: const Color(0xFF0D9488), width: 4),
                 ),
                 child: const Center(
@@ -395,11 +401,11 @@ class _SlaRiskRadarConsoleScreenState extends ConsumerState<SlaRiskRadarConsoleS
               Expanded(
                 child: Column(
                   children: [
-                    _buildHealthDistributionRow('Safe Velocity (>4h)', '32 Cases', const Color(0xFF0D9488)),
+                    _buildHealthDistributionRow(context, 'Safe Velocity (>4h)', '32 Cases', const Color(0xFF0D9488)),
                     const SizedBox(height: 6),
-                    _buildHealthDistributionRow('Moderate Watch (<2h)', '07 Cases', const Color(0xFFD97706)),
+                    _buildHealthDistributionRow(context, 'Moderate Watch (<2h)', '07 Cases', const Color(0xFFD97706)),
                     const SizedBox(height: 6),
-                    _buildHealthDistributionRow('Imminent Threat (<30m)', '03 Cases', const Color(0xFFE11D48)),
+                    _buildHealthDistributionRow(context, 'Imminent Threat (<30m)', '03 Cases', const Color(0xFFE11D48)),
                   ],
                 ),
               ),
@@ -410,7 +416,7 @@ class _SlaRiskRadarConsoleScreenState extends ConsumerState<SlaRiskRadarConsoleS
     );
   }
 
-  Widget _buildHealthDistributionRow(String label, String count, Color color) {
+  Widget _buildHealthDistributionRow(BuildContext context, String label, String count, Color color) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
@@ -418,10 +424,10 @@ class _SlaRiskRadarConsoleScreenState extends ConsumerState<SlaRiskRadarConsoleS
           children: [
             Container(width: 8, height: 8, decoration: BoxDecoration(color: color, shape: BoxShape.circle)),
             const SizedBox(width: 6),
-            Text(label, style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+            Text(label, style: TextStyle(fontSize: 12, color: context.textSecondary)),
           ],
         ),
-        Text(count, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.textPrimary)),
+        Text(count, style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: context.textPrimary)),
       ],
     );
   }
@@ -430,9 +436,9 @@ class _SlaRiskRadarConsoleScreenState extends ConsumerState<SlaRiskRadarConsoleS
     return Container(
       padding: const EdgeInsets.all(AppSpacing.md),
       decoration: BoxDecoration(
-        color: const Color(0xFFFAF5FF),
+        color: context.isDark ? const Color(0xFF1E172E) : const Color(0xFFFAF5FF),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFC084FC).withValues(alpha: 0.3)),
+        border: Border.all(color: const Color(0xFFC084FC).withValues(alpha: context.isDark ? 0.35 : 0.3)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -453,17 +459,17 @@ class _SlaRiskRadarConsoleScreenState extends ConsumerState<SlaRiskRadarConsoleS
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFF3E8FF),
+                  color: context.isDark ? const Color(0xFF2E1065) : const Color(0xFFF3E8FF),
                   borderRadius: BorderRadius.circular(4),
                 ),
-                child: const Text('+8.4% SAFE', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Color(0xFF9333EA))),
+                child: const Text('+8.4% SAFE', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Color(0xFFC084FC))),
               ),
             ],
           ),
           const SizedBox(height: 6),
           Text(
             'Reallocating 2 stalled P2 cases from David Ross to Sarah Jenkins recovers 18 minutes of shift safety headroom.',
-            style: AppTypography.bodySmall(context).copyWith(color: AppColors.textSecondary),
+            style: AppTypography.bodySmall(context).copyWith(color: context.textSecondary),
           ),
           const SizedBox(height: AppSpacing.sm),
           Row(
@@ -507,16 +513,16 @@ class _SlaRiskRadarConsoleScreenState extends ConsumerState<SlaRiskRadarConsoleS
                 style: TextStyle(
                   fontSize: 12,
                   fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-                  color: isSelected ? AppColors.accentPrimary : AppColors.textSecondary,
+                  color: isSelected ? AppColors.accentPrimary : context.textSecondary,
                 ),
               ),
               selected: isSelected,
-              selectedColor: const Color(0xFFEEF2FF),
-              backgroundColor: Colors.white,
+              selectedColor: context.isDark ? const Color(0xFF312E81) : const Color(0xFFEEF2FF),
+              backgroundColor: context.cardBg,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(8),
                 side: BorderSide(
-                  color: isSelected ? AppColors.accentPrimary : AppColors.borderLight,
+                  color: isSelected ? AppColors.accentPrimary : context.border,
                 ),
               ),
               onSelected: (selected) {
@@ -571,6 +577,7 @@ class _SlaRiskRadarConsoleScreenState extends ConsumerState<SlaRiskRadarConsoleS
         return Padding(
           padding: const EdgeInsets.only(bottom: AppSpacing.sm),
           child: _buildRadarCaseCard(
+            context,
             caseId: c.caseNumber.isNotEmpty ? c.caseNumber : c.caseId,
             title: c.title,
             severity: c.priority,
@@ -587,7 +594,8 @@ class _SlaRiskRadarConsoleScreenState extends ConsumerState<SlaRiskRadarConsoleS
     );
   }
 
-  Widget _buildRadarCaseCard({
+  Widget _buildRadarCaseCard(
+    BuildContext context, {
     required String caseId,
     required String title,
     required String severity,
@@ -604,14 +612,22 @@ class _SlaRiskRadarConsoleScreenState extends ConsumerState<SlaRiskRadarConsoleS
         : isImminent
             ? const Color(0xFFE11D48)
             : const Color(0xFFD97706);
-    final alertBg = isBreached || isImminent ? const Color(0xFFFFE4E6) : const Color(0xFFFEF3C7);
+    final alertBg = isBreached || isImminent
+        ? (context.isDark ? const Color(0xFF4C0519) : const Color(0xFFFFE4E6))
+        : (context.isDark ? const Color(0xFF451A03) : const Color(0xFFFEF3C7));
+
+    final isMobile = ResponsiveLayout.isMobile(context);
 
     return Container(
       padding: const EdgeInsets.all(AppSpacing.md),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: context.cardBg,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: isImminent ? const Color(0xFFFDA4AF) : AppColors.borderLight),
+        border: Border.all(
+          color: isImminent
+              ? const Color(0xFFFDA4AF).withValues(alpha: context.isDark ? 0.4 : 1.0)
+              : context.border,
+        ),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.02),
@@ -640,12 +656,12 @@ class _SlaRiskRadarConsoleScreenState extends ConsumerState<SlaRiskRadarConsoleS
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                     decoration: BoxDecoration(
-                      color: const Color(0xFFF1F5F9),
+                      color: context.surfaceElevated,
                       borderRadius: BorderRadius.circular(4),
                     ),
                     child: Text(
                       severity,
-                      style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
+                      style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: context.textPrimary),
                     ),
                   ),
                 ],
@@ -670,7 +686,7 @@ class _SlaRiskRadarConsoleScreenState extends ConsumerState<SlaRiskRadarConsoleS
           const SizedBox(height: 6),
           Text(
             title,
-            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: AppColors.textPrimary),
+            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: context.textPrimary),
           ),
           const SizedBox(height: 8),
           // SLA Progress
@@ -681,7 +697,7 @@ class _SlaRiskRadarConsoleScreenState extends ConsumerState<SlaRiskRadarConsoleS
                   borderRadius: BorderRadius.circular(4),
                   child: LinearProgressIndicator(
                     value: (consumedPercent / 100).clamp(0.0, 1.0),
-                    backgroundColor: const Color(0xFFE2E8F0),
+                    backgroundColor: context.isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0),
                     valueColor: AlwaysStoppedAnimation<Color>(alertColor),
                     minHeight: 6,
                   ),
@@ -695,65 +711,119 @@ class _SlaRiskRadarConsoleScreenState extends ConsumerState<SlaRiskRadarConsoleS
             ],
           ),
           const SizedBox(height: 10),
-          Wrap(
-            alignment: WrapAlignment.spaceBetween,
-            crossAxisAlignment: WrapCrossAlignment.center,
-            spacing: 8,
-            runSpacing: 6,
-            children: [
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Icon(Icons.person_outline, size: 14, color: AppColors.textSecondary),
-                  const SizedBox(width: 4),
-                  Text(
-                    assignee,
-                    style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+          if (isMobile) ...[
+            Row(
+              children: [
+                Icon(Icons.person_outline, size: 14, color: context.textSecondary),
+                const SizedBox(width: 4),
+                Text(
+                  assignee,
+                  style: TextStyle(fontSize: 12, color: context.textSecondary),
+                ),
+                const SizedBox(width: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: context.isDark ? const Color(0xFF2E1065) : const Color(0xFFFAF5FF),
+                    borderRadius: BorderRadius.circular(4),
+                    border: Border.all(color: const Color(0xFFC084FC).withValues(alpha: 0.3)),
                   ),
-                  const SizedBox(width: 8),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFFAF5FF),
-                      borderRadius: BorderRadius.circular(4),
-                      border: Border.all(color: const Color(0xFFC084FC).withValues(alpha: 0.3)),
-                    ),
-                    child: Text(
-                      escalationTier,
-                      style: const TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: Color(0xFF9333EA)),
-                    ),
+                  child: Text(
+                    escalationTier,
+                    style: const TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: Color(0xFFC084FC)),
                   ),
-                ],
-              ),
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  InkWell(
-                    onTap: () => _showFeedbackToast('Tier 2 Escalation confirmed & broadcasted', Icons.bolt, const Color(0xFFE11D48)),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                ),
+              ],
+            ),
+            const SizedBox(height: AppSpacing.sm),
+            Row(
+              children: [
+                Expanded(
+                  child: ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFFE11D48),
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 10),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                      elevation: 0,
+                    ),
+                    onPressed: () => _showFeedbackToast('Tier 2 Escalation confirmed & broadcasted', Icons.bolt, const Color(0xFFE11D48)),
+                    child: const Text('⚡ Escalation Trigger', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                OutlinedButton(
+                  style: OutlinedButton.styleFrom(
+                    side: BorderSide(color: context.border),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                  ),
+                  onPressed: () => context.go('/cases/$caseId'),
+                  child: const Text('Open Studio ↗', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.accentPrimary)),
+                ),
+              ],
+            ),
+          ] else ...[
+            Wrap(
+              alignment: WrapAlignment.spaceBetween,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              spacing: 8,
+              runSpacing: 6,
+              children: [
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.person_outline, size: 14, color: context.textSecondary),
+                    const SizedBox(width: 4),
+                    Text(
+                      assignee,
+                      style: TextStyle(fontSize: 12, color: context.textSecondary),
+                    ),
+                    const SizedBox(width: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                       decoration: BoxDecoration(
-                        color: const Color(0xFFFFE4E6),
-                        borderRadius: BorderRadius.circular(6),
+                        color: context.isDark ? const Color(0xFF2E1065) : const Color(0xFFFAF5FF),
+                        borderRadius: BorderRadius.circular(4),
+                        border: Border.all(color: const Color(0xFFC084FC).withValues(alpha: 0.3)),
                       ),
+                      child: Text(
+                        escalationTier,
+                        style: const TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: Color(0xFFC084FC)),
+                      ),
+                    ),
+                  ],
+                ),
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    InkWell(
+                      onTap: () => _showFeedbackToast('Tier 2 Escalation confirmed & broadcasted', Icons.bolt, const Color(0xFFE11D48)),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: context.isDark ? const Color(0xFF4C0519) : const Color(0xFFFFE4E6),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: const Text(
+                          '⚡ Escalation Trigger',
+                          style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFFE11D48)),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    InkWell(
+                      onTap: () => context.go('/cases/$caseId'),
                       child: const Text(
-                        '⚡ Escalation Trigger',
-                        style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFFE11D48)),
+                        'Open Studio ↗',
+                        style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppColors.accentPrimary),
                       ),
                     ),
-                  ),
-                  const SizedBox(width: 8),
-                  InkWell(
-                    onTap: () => context.go('/cases/$caseId'),
-                    child: const Text(
-                      'Open Studio ↗',
-                      style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppColors.accentPrimary),
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
+                  ],
+                ),
+              ],
+            ),
+          ],
         ],
       ),
     );

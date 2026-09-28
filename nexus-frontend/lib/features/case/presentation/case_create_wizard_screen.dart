@@ -268,60 +268,26 @@ class _CaseCreateWizardScreenState extends ConsumerState<CaseCreateWizardScreen>
 
           Text('Severity Level *', style: AppTypography.titleSmall(isDark)),
           const SizedBox(height: AppSpacing.xs),
-          Row(
-            children: severities.map((sev) {
-              final isSelected = _selectedSeverity == sev;
-              Color badgeColor;
-              switch (sev) {
-                case 'LOW':
-                  badgeColor = AppColors.statusClosedTextLight;
-                  break;
-                case 'MEDIUM':
-                  badgeColor = AppColors.statusInvestigatingTextLight;
-                  break;
-                case 'HIGH':
-                  badgeColor = AppColors.statusWaitingTextLight;
-                  break;
-                case 'CRITICAL':
-                default:
-                  badgeColor = AppColors.statusBreachedTextLight;
-                  break;
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final isCompact = constraints.maxWidth < 420;
+              if (isCompact) {
+                return GridView.count(
+                  crossAxisCount: 2,
+                  crossAxisSpacing: 6,
+                  mainAxisSpacing: 6,
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  childAspectRatio: 3.2,
+                  children: severities.map((sev) => _buildSeverityTile(sev, isDark)).toList(),
+                );
               }
-
-              return Expanded(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 2),
-                  child: InkWell(
-                    onTap: () => setState(() => _selectedSeverity = sev),
-                    borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(vertical: 10),
-                      decoration: BoxDecoration(
-                        color: isSelected
-                            ? badgeColor.withValues(alpha: 0.15)
-                            : (isDark ? AppColors.darkSurfaceElevated : AppColors.lightSurfaceElevated),
-                        borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
-                        border: Border.all(
-                          color: isSelected ? badgeColor : (isDark ? AppColors.darkBorder : AppColors.lightBorder),
-                          width: isSelected ? 1.5 : 1,
-                        ),
-                      ),
-                      child: Center(
-                        child: Text(
-                          sev,
-                          style: TextStyle(
-                            color: isSelected ? badgeColor : (isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary),
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
+              return Row(
+                children: severities.map((sev) => Expanded(child: _buildSeverityTile(sev, isDark))).toList(),
               );
-            }).toList(),
+            },
           ),
+
           const SizedBox(height: AppSpacing.lg),
 
           Text('Detailed Description *', style: AppTypography.titleSmall(isDark)),
@@ -393,6 +359,57 @@ class _CaseCreateWizardScreenState extends ConsumerState<CaseCreateWizardScreen>
             ],
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildSeverityTile(String sev, bool isDark) {
+    final isSelected = _selectedSeverity == sev;
+    Color badgeColor;
+    switch (sev) {
+      case 'LOW':
+        badgeColor = AppColors.statusClosedTextLight;
+        break;
+      case 'MEDIUM':
+        badgeColor = AppColors.statusInvestigatingTextLight;
+        break;
+      case 'HIGH':
+        badgeColor = AppColors.statusWaitingTextLight;
+        break;
+      case 'CRITICAL':
+      default:
+        badgeColor = AppColors.statusBreachedTextLight;
+        break;
+    }
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 2),
+      child: InkWell(
+        onTap: () => setState(() => _selectedSeverity = sev),
+        borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 10),
+          decoration: BoxDecoration(
+            color: isSelected
+                ? badgeColor.withValues(alpha: 0.15)
+                : (isDark ? AppColors.darkSurfaceElevated : AppColors.lightSurfaceElevated),
+            borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
+            border: Border.all(
+              color: isSelected ? badgeColor : (isDark ? AppColors.darkBorder : AppColors.lightBorder),
+              width: isSelected ? 1.5 : 1,
+            ),
+          ),
+          child: Center(
+            child: Text(
+              sev,
+              style: TextStyle(
+                color: isSelected ? badgeColor : (isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary),
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ),
       ),
     );
   }

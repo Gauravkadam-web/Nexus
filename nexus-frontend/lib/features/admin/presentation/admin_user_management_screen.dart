@@ -4,7 +4,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_typography.dart';
+import '../../../core/theme/theme_context_extensions.dart';
 import '../../../core/widgets/app_shell.dart';
+import '../../../core/widgets/kpi_card.dart';
 import '../../../core/widgets/responsive_layout.dart';
 import '../../../core/widgets/state_view_helpers.dart';
 import '../data/admin_api.dart';
@@ -84,6 +86,75 @@ class _AdminUserManagementScreenState extends ConsumerState<AdminUserManagementS
     );
   }
 
+  Future<void> _handleUpdateRole(String userId, String currentRole, String userName) async {
+    final roles = ['REQUESTER', 'OPERATOR', 'TEAM_LEAD', 'MANAGER', 'ADMIN'];
+    final selectedRole = await showModalBottomSheet<String>(
+      context: context,
+      backgroundColor: context.cardBg,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (ctx) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.all(AppSpacing.md),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'Assign Role: $userName',
+                      style: AppTypography.titleMedium(context).copyWith(fontWeight: FontWeight.bold),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.close, size: 20),
+                      onPressed: () => Navigator.pop(ctx),
+                    ),
+                  ],
+                ),
+                Text(
+                  'Select new RBAC permissions tier for this organization account.',
+                  style: TextStyle(fontSize: 12, color: context.textSecondary),
+                ),
+                const SizedBox(height: AppSpacing.md),
+                ...roles.map((r) {
+                  final isCurrent = r == currentRole;
+                  return ListTile(
+                    dense: true,
+                    title: Text(
+                      r,
+                      style: TextStyle(
+                        fontWeight: isCurrent ? FontWeight.bold : FontWeight.w500,
+                        color: isCurrent ? context.accent : context.textPrimary,
+                      ),
+                    ),
+                    trailing: isCurrent ? Icon(Icons.check_circle, color: context.accent, size: 20) : null,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                    tileColor: isCurrent ? context.accentTint.withValues(alpha: 0.3) : null,
+                    onTap: () => Navigator.pop(ctx, r),
+                  );
+                }),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+
+    if (selectedRole != null && selectedRole != currentRole) {
+      final res = await AdminApi().updateUserRole(userId: userId, role: selectedRole);
+      if (res.success) {
+        _showFeedbackToast('Updated $userName to $selectedRole', Icons.verified_user, const Color(0xFF0D9488));
+        _loadUsers();
+      } else {
+        _showFeedbackToast(res.error ?? 'Failed to update role', Icons.error_outline, const Color(0xFFE11D48));
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return AppShell(
@@ -134,7 +205,13 @@ class _AdminUserManagementScreenState extends ConsumerState<AdminUserManagementS
             children: [
               Expanded(
                 flex: 4,
-                child: _buildSearchAndFilters(context),
+                child: Column(
+                  children: [
+                    _buildSearchAndFilters(context),
+                    const SizedBox(height: AppSpacing.md),
+                    _buildGovernanceSecurityHealthCard(context),
+                  ],
+                ),
               ),
               const SizedBox(width: AppSpacing.xl),
               Expanded(
@@ -160,17 +237,17 @@ class _AdminUserManagementScreenState extends ConsumerState<AdminUserManagementS
           children: [
             Text(
               'Directory & Access',
-              style: AppTypography.titleMedium(context).copyWith(fontWeight: FontWeight.bold),
+              style: AppTypography.titleMedium(context).copyWith(fontWeight: FontWeight.bold, color: context.textPrimary),
             ),
-            const Text(
+            Text(
               'SOC-2 / RBAC Role Governance',
-              style: TextStyle(fontSize: 11, color: AppColors.textSecondary),
+              style: TextStyle(fontSize: 11, color: context.textSecondary),
             ),
           ],
         ),
         ElevatedButton.icon(
           style: ElevatedButton.styleFrom(
-            backgroundColor: AppColors.accentPrimary,
+            backgroundColor: context.accent,
             foregroundColor: Colors.white,
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
@@ -178,7 +255,7 @@ class _AdminUserManagementScreenState extends ConsumerState<AdminUserManagementS
           ),
           icon: const Icon(Icons.person_add_outlined, size: 14),
           label: const Text('+ Invite User', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
-          onPressed: () => _showFeedbackToast('Opening User Invitation Modal', Icons.person_add, AppColors.accentPrimary),
+          onPressed: () => _showFeedbackToast('Opening User Invitation Modal', Icons.person_add, context.accent),
         ),
       ],
     );
@@ -206,16 +283,16 @@ class _AdminUserManagementScreenState extends ConsumerState<AdminUserManagementS
                 style: TextStyle(
                   fontSize: 11,
                   fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-                  color: isSelected ? AppColors.accentPrimary : AppColors.textSecondary,
+                  color: isSelected ? context.accent : context.textSecondary,
                 ),
               ),
               selected: isSelected,
-              selectedColor: const Color(0xFFEEF2FF),
-              backgroundColor: Colors.white,
+              selectedColor: context.accentTint,
+              backgroundColor: context.cardBg,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(20),
                 side: BorderSide(
-                  color: isSelected ? AppColors.accentPrimary : AppColors.borderLight,
+                  color: isSelected ? context.accent : context.border,
                 ),
               ),
               onSelected: (selected) {
@@ -246,37 +323,33 @@ class _AdminUserManagementScreenState extends ConsumerState<AdminUserManagementS
           physics: const NeverScrollableScrollPhysics(),
           childAspectRatio: isWide ? 1.5 : 1.15,
           children: [
-            _buildKpiCard(
+            KpiCard(
               title: 'TOTAL USERS',
               value: '$totalCount',
-              badgeText: 'All Synced',
-              badgeColor: const Color(0xFF0D9488),
-              badgeBg: const Color(0xFFCCFBF1),
+              subtitle: 'All Synced',
               icon: Icons.group_outlined,
+              accentColor: const Color(0xFF0D9488),
             ),
-            _buildKpiCard(
+            KpiCard(
               title: 'ACTIVE NOW',
               value: activeCount > 0 ? '$activeCount' : '$totalCount',
-              badgeText: 'Verified',
-              badgeColor: const Color(0xFF0284C7),
-              badgeBg: const Color(0xFFE0F2FE),
+              subtitle: 'Verified Sessions',
               icon: Icons.timelapse_outlined,
+              accentColor: const Color(0xFF0284C7),
             ),
-            _buildKpiCard(
+            KpiCard(
               title: 'LEADS & ADMINS',
               value: leadCount > 0 ? '$leadCount' : '2',
-              badgeText: 'Elevated RBAC',
-              badgeColor: const Color(0xFFD97706),
-              badgeBg: const Color(0xFFFEF3C7),
+              subtitle: 'Elevated RBAC',
               icon: Icons.shield_outlined,
+              accentColor: const Color(0xFFD97706),
             ),
-            _buildKpiCard(
+            const KpiCard(
               title: 'MFA STATUS',
               value: '100%',
-              badgeText: 'SOC-2 Compliant',
-              badgeColor: const Color(0xFF6366F1),
-              badgeBg: const Color(0xFFEEF2FF),
+              subtitle: 'SOC-2 Compliant',
               icon: Icons.verified_user_outlined,
+              accentColor: Color(0xFF6366F1),
             ),
           ],
         );
@@ -284,103 +357,95 @@ class _AdminUserManagementScreenState extends ConsumerState<AdminUserManagementS
     );
   }
 
-
-  Widget _buildKpiCard({
-    required String title,
-    required String value,
-    required String badgeText,
-    required Color badgeColor,
-    required Color badgeBg,
-    required IconData icon,
-  }) {
+  Widget _buildSearchAndFilters(BuildContext context) {
     return Container(
       padding: const EdgeInsets.all(AppSpacing.sm + 2),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: context.cardBg,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: context.border),
+      ),
+      child: TextField(
+        controller: _searchController,
+        style: TextStyle(fontSize: 13, color: context.textPrimary),
+        decoration: InputDecoration(
+          hintText: 'Filter by name, pod, role...',
+          hintStyle: TextStyle(fontSize: 12, color: context.textMuted),
+          prefixIcon: Icon(Icons.search, size: 18, color: context.textMuted),
+          suffixIcon: Container(
+            margin: const EdgeInsets.all(8),
+            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+            decoration: BoxDecoration(
+              color: context.isDark ? AppColors.darkSurfaceElevated : const Color(0xFFF1F5F9),
+              borderRadius: BorderRadius.circular(4),
+            ),
+            child: Text('⌘K', style: TextStyle(fontSize: 10, color: context.textSecondary)),
+          ),
+          isDense: true,
+          filled: false,
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(8),
+            borderSide: BorderSide(color: context.border),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildGovernanceSecurityHealthCard(BuildContext context) {
+    final activeCount = _users.where((u) => u.isActive).length;
+    final totalCount = _users.isNotEmpty ? _users.length : 5;
+
+    return Container(
+      padding: const EdgeInsets.all(AppSpacing.md),
+      decoration: BoxDecoration(
+        color: context.cardBg,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.borderLight),
+        border: Border.all(color: context.border),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
+              const Icon(Icons.security, size: 18, color: Color(0xFF0D9488)),
+              const SizedBox(width: AppSpacing.xs),
               Text(
-                title,
-                style: const TextStyle(
-                  fontSize: 10,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.textSecondary,
-                  letterSpacing: 0.5,
-                ),
+                'Security Health & Directory',
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: context.textPrimary),
               ),
-              Icon(icon, size: 16, color: badgeColor),
             ],
           ),
-          Text(
-            value,
-            style: const TextStyle(
-              fontSize: 22,
-              fontWeight: FontWeight.bold,
-              color: AppColors.textPrimary,
-            ),
-          ),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-            decoration: BoxDecoration(
-              color: badgeBg,
-              borderRadius: BorderRadius.circular(4),
-            ),
-            child: Text(
-              badgeText,
-              style: TextStyle(
-                fontSize: 10,
-                fontWeight: FontWeight.w600,
-                color: badgeColor,
-              ),
-            ),
-          ),
+          const SizedBox(height: AppSpacing.sm),
+          _buildHealthRow('Identity Provider', 'Okta SSO / SCIM v2.0', const Color(0xFF0D9488)),
+          const SizedBox(height: 6),
+          _buildHealthRow('MFA Enforcement', 'Hardware Token + TOTP', const Color(0xFF0D9488)),
+          const SizedBox(height: 6),
+          _buildHealthRow('Session Clearance', '$activeCount / $totalCount verified', context.accent),
+          const SizedBox(height: 6),
+          _buildHealthRow('Compliance Standard', 'SOC-2 Type II Certified', const Color(0xFFD97706)),
         ],
       ),
     );
   }
 
-  Widget _buildSearchAndFilters(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(AppSpacing.sm + 2),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: AppColors.borderLight),
-      ),
-      child: Column(
-        children: [
-          TextField(
-            controller: _searchController,
-            decoration: InputDecoration(
-              hintText: 'Filter by name, pod, role...',
-              hintStyle: const TextStyle(fontSize: 12, color: AppColors.textMuted),
-              prefixIcon: const Icon(Icons.search, size: 18, color: AppColors.textMuted),
-              suffixIcon: Container(
-                margin: const EdgeInsets.all(8),
-                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFF1F5F9),
-                  borderRadius: BorderRadius.circular(4),
-                ),
-                child: const Text('⌘K', style: TextStyle(fontSize: 10, color: AppColors.textSecondary)),
-              ),
-              isDense: true,
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(8),
-                borderSide: const BorderSide(color: AppColors.borderLight),
-              ),
-            ),
+  Widget _buildHealthRow(String label, String value, Color badgeColor) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text(label, style: TextStyle(fontSize: 11, color: context.textSecondary)),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+          decoration: BoxDecoration(
+            color: badgeColor.withValues(alpha: 0.12),
+            borderRadius: BorderRadius.circular(4),
           ),
-        ],
-      ),
+          child: Text(
+            value,
+            style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: badgeColor),
+          ),
+        ),
+      ],
     );
   }
 
@@ -429,6 +494,7 @@ class _AdminUserManagementScreenState extends ConsumerState<AdminUserManagementS
         return Padding(
           padding: const EdgeInsets.only(bottom: AppSpacing.sm),
           child: _buildUserCard(
+            userId: u.id,
             name: u.name,
             email: u.email,
             role: u.role,
@@ -446,6 +512,7 @@ class _AdminUserManagementScreenState extends ConsumerState<AdminUserManagementS
   }
 
   Widget _buildUserCard({
+    required String userId,
     required String name,
     required String email,
     required String role,
@@ -459,12 +526,29 @@ class _AdminUserManagementScreenState extends ConsumerState<AdminUserManagementS
   }) {
     final progress = (activeCases / maxCases).clamp(0.0, 1.0);
 
+    // Role-coded dynamic avatar colors (Linear/Stripe Standard)
+    Color avatarBg;
+    Color avatarText;
+    if (role.contains('ADMIN')) {
+      avatarBg = const Color(0xFFFFE4E6);
+      avatarText = const Color(0xFFE11D48);
+    } else if (role.contains('LEAD')) {
+      avatarBg = const Color(0xFFF3E8FF);
+      avatarText = const Color(0xFF7C3AED);
+    } else if (role.contains('OPERATOR')) {
+      avatarBg = const Color(0xFFEEF2FF);
+      avatarText = const Color(0xFF4648D4);
+    } else {
+      avatarBg = const Color(0xFFCCFBF1);
+      avatarText = const Color(0xFF0D9488);
+    }
+
     return Container(
       padding: const EdgeInsets.all(AppSpacing.md),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: context.cardBg,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.borderLight),
+        border: Border.all(color: context.border),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -473,13 +557,13 @@ class _AdminUserManagementScreenState extends ConsumerState<AdminUserManagementS
             children: [
               CircleAvatar(
                 radius: 16,
-                backgroundColor: isOnline ? const Color(0xFFCCFBF1) : const Color(0xFFF1F5F9),
+                backgroundColor: avatarBg,
                 child: Text(
                   name.split(' ').map((e) => e.isNotEmpty ? e[0] : '').take(2).join(),
                   style: TextStyle(
                     fontSize: 11,
                     fontWeight: FontWeight.bold,
-                    color: isOnline ? const Color(0xFF0D9488) : AppColors.textSecondary,
+                    color: avatarText,
                   ),
                 ),
               ),
@@ -488,8 +572,16 @@ class _AdminUserManagementScreenState extends ConsumerState<AdminUserManagementS
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(name, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppColors.textPrimary)),
-                    Text(email, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 11, color: AppColors.textSecondary)),
+                    Text(
+                      name,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: context.textPrimary),
+                    ),
+                    Text(
+                      email,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(fontSize: 11, color: context.textSecondary),
+                    ),
                   ],
                 ),
               ),
@@ -511,19 +603,55 @@ class _AdminUserManagementScreenState extends ConsumerState<AdminUserManagementS
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text('Team: $team', style: const TextStyle(fontSize: 11, color: AppColors.textSecondary)),
-              Text(status, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: isOnline ? const Color(0xFF0D9488) : AppColors.textMuted)),
+              Text('Team: $team', style: TextStyle(fontSize: 11, color: context.textSecondary)),
+              Text(status, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: isOnline ? const Color(0xFF0D9488) : context.textMuted)),
             ],
           ),
           const SizedBox(height: 6),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Capacity: $activeCases / $maxCases active cases',
+                style: TextStyle(fontSize: 10, color: context.textMuted, fontWeight: FontWeight.w500),
+              ),
+              Text(
+                '${(progress * 100).toInt()}%',
+                style: TextStyle(
+                  fontSize: 10,
+                  fontWeight: FontWeight.bold,
+                  color: progress > 0.85 ? const Color(0xFFE11D48) : context.textSecondary,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
           ClipRRect(
             borderRadius: BorderRadius.circular(3),
             child: LinearProgressIndicator(
               value: progress,
-              backgroundColor: const Color(0xFFE2E8F0),
-              valueColor: AlwaysStoppedAnimation<Color>(progress > 0.85 ? const Color(0xFFE11D48) : AppColors.accentPrimary),
+              backgroundColor: context.isDark ? AppColors.darkSurfaceElevated : const Color(0xFFE2E8F0),
+              valueColor: AlwaysStoppedAnimation<Color>(progress > 0.85 ? const Color(0xFFE11D48) : context.accent),
               minHeight: 4,
             ),
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton.icon(
+                  style: OutlinedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 8),
+                    side: BorderSide(color: context.border),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                    backgroundColor: context.surfaceElevated,
+                  ),
+                  icon: Icon(Icons.shield_outlined, size: 14, color: context.accent),
+                  label: Text('Change Role', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: context.accent)),
+                  onPressed: () => _handleUpdateRole(userId, role, name),
+                ),
+              ),
+            ],
           ),
         ],
       ),

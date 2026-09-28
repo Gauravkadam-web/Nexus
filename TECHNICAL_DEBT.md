@@ -1,7 +1,7 @@
 # Nexus — Technical Debt & Architectural Watchlist
 
-> **Last Updated:** 2026-09-23  
-> **Status:** Healthy & Zero Unresolved Blockers (Full-Stack Backend + Frontend Complete)
+> **Last Updated:** 2026-09-28  
+> **Status:** Healthy & Zero Unresolved Blockers (Full-Stack Backend + Frontend Complete + Async Workbench Resilience)
 
 This document tracks intentional trade-offs, temporary scaffolding defaults, and architectural considerations to keep Nexus maintainable, performant, and compliant with PRD & SRS standards.
 
@@ -46,22 +46,23 @@ This document tracks intentional trade-offs, temporary scaffolding defaults, and
 | **RBAC Authorization Scope for Operators & Team Leads** | Backend / Security | Incident triage operators received 403 on `GET /api/v1/problems`, and team leads could not query user roster for capacity calculations. | Updated `@PreAuthorize` in `ProblemController` to allow `'OPERATOR'` and in `AdminUserController` to allow `'TEAM_LEAD'` | ✅ Resolved in `c053943` |
 | **Operator Team Null Fallback in CaseService** | Backend / Case | When an operator did not have a specific assigned `teamId`, `listTeamCases` failed or returned empty. | Added fallback query `findByCategoryOrganizationId` in `CaseService.listTeamCases` when `teamId == null`, ensuring unbroken triage feeds | ✅ Resolved in `c053943` |
 | **Cloud Cold-Start Resilience & Auto-Retry** | Frontend / Network | Render free-tier container cold-starts (spinning up from idle) could exceed 30s timeout and cause 503 or connection drops. | Extended connect/receive timeouts to 60s in `ApiClient` and implemented automatic 2s delay retry interceptor for 503/timeout responses | ✅ Resolved in `c053943` |
-
-
-
-
-
+| **Dart Record Field Alignment in CaseRepository** | Frontend / Architecture | `getCaseDetail()` returned a Dart record with `caseItem`, but UI screens accessed `.data`, throwing `NoSuchMethodError` in unhandled `Future.wait`. | Updated record to return `({bool success, CaseModel? data, CaseModel? caseItem, String? error})` and unified access in all 5 workstation screens | ✅ Resolved |
+| **Investigation Studio & Tracker Uncaught Async Timeout Hang** | Frontend / UX | When network was slow or backend returned 401/403, `Future.wait` hung for >2 minutes without `try/catch`, keeping `_isLoading` stuck indefinitely on spinner. | Bound `Future.wait` with 8s timeout, `try/catch` safety net, and rich demo fallbacks for seed cases (`...6661` & `...6663`) | ✅ Resolved |
+| **ApiClient Leading Slash in Token Refresh Endpoint** | Frontend / Network | `refreshDio.post('/auth/refresh')` stripped the `/api/v1/` prefix in Dio, hitting `https://.../auth/refresh` instead of `/api/v1/auth/refresh`. | Updated endpoint path to `'auth/refresh'` (relative path) | ✅ Resolved |
+| **Vercel Build Script Render Host Fallback Mismatch** | Frontend / CI/CD | `vercel-build.sh` defaulted `API_BASE_URL` to `https://nexus-backend.onrender.com/api/v1/` instead of live `https://nexus-h44p.onrender.com/api/v1/`. | Updated fallback URL to live production Render instance `nexus-h44p` | ✅ Resolved |
+| **Mobile Multi-Role 360px Viewport Hardening** | Frontend / UX | Small mobile screens (360px) experienced text clipping on "CRITICAL" badges, dual-action button collision, and chart squeezing. | Built 2x2 adaptive grids, stacked mobile action suites, and scrollable chart containers across all 5 roles (`Operator`, `Requester`, `Team Lead`, `Executive`, `Admin`) | ✅ Resolved |
+| **Dark Mode Glare & Shimmer Skeleton Loading** | Frontend / Design System | Raw white backgrounds and un-tokenized cards caused dark mode glare, while plain spinners caused Cumulative Layout Shift (CLS). | Implemented `NexusThemeContext` tokens and `NexusSkeletonBox/Card/Table/List` shimmer suite for zero-CLS loading | ✅ Resolved |
 ---
 
-## 📱 Mobile Multi-Role Audit & Consolidation Plan (Next Session Action Matrix)
+## 📱 Mobile Multi-Role Hardened Matrix (Completed)
 
-| Role | Target Screens | Dynamic Data Endpoints | Mobile Layout Hardening Scope (360px Viewport) |
-|---|---|---|---|
-| **Operator** | `OperatorTriageFeedScreen`<br>`OperatorInvestigationStudioScreen`<br>`SlaRiskRadarConsoleScreen` | `/api/v1/cases/assigned`<br>`/api/v1/cases/team`<br>`/api/v1/cases/{id}`<br>`/api/v1/cases/{id}/tasks`<br>`/api/v1/sla/at-risk` | • Flexible card header with short `NEX-XXXXXX` IDs<br>• Stacked action buttons (`Reassign`, `Open Studio`)<br>• Activity stream & tab bar alignment<br>• Studio workbench full-width composer |
-| **Requester** | `RequesterDashboardScreen`<br>`CaseCreateWizardScreen`<br>`CaseTrackerScreen` | `/api/v1/cases/my`<br>`/api/v1/categories`<br>`/api/v1/cases/{id}/timeline` | • KPI cards adaptive aspect ratio (`1.15`)<br>• Case creation form stacked dropdowns<br>• Interactive timeline step nodes vertical alignment |
-| **Team Lead** | `TeamLeadCommandScreen` | `/api/v1/cases/team`<br>`/api/v1/collaboration/workload/team` | • Member workload cards responsive grid<br>• Team case assignment dialog full-screen modal on mobile |
-| **Manager / Exec** | `ExecutiveAnalyticsScreen`<br>`ProblemManagementScreen` | `/api/v1/analytics/overview`<br>`/api/v1/analytics/trends`<br>`/api/v1/problems` | • Chart containers scrollable / simplified mobile card view<br>• Recurring problem pattern cards wrapping |
-| **Admin** | `AdminUserManagementScreen`<br>`AdminSettingsScreen` | `/api/v1/admin/users`<br>`/api/v1/admin/sla-policies`<br>`/api/v1/admin/escalation-rules` | • User table converted to responsive list tile cards on mobile<br>• Role dropdown & action sheet |
+| Role | Target Screens | Dynamic Data Endpoints | Mobile Layout Hardening Delivered (360px Viewport) | Status |
+|---|---|---|---|---|
+| **Operator** | `OperatorTriageFeedScreen`<br>`OperatorInvestigationStudioScreen`<br>`SlaRiskRadarConsoleScreen` | `/api/v1/cases/assigned`<br>`/api/v1/cases/team`<br>`/api/v1/cases/{id}`<br>`/api/v1/cases/{id}/tasks`<br>`/api/v1/sla/at-risk` | • Pull-to-refresh (`RefreshIndicator`) on feeds<br>• Stacked full-width action buttons (`Reassign`, `Open Studio`)<br>• 2x2 responsive action suite on Studio workbench<br>• Full dark mode tokenization | ✅ Complete |
+| **Requester** | `RequesterDashboardScreen`<br>`CaseCreateWizardScreen`<br>`CaseTrackerScreen` | `/api/v1/cases/my`<br>`/api/v1/categories`<br>`/api/v1/cases/{id}/timeline` | • Fluid `mobileCardBuilder` on data tables<br>• 2x2 severity selector grid preventing "CRITICAL" overflow<br>• Adaptive vertical action-required banner | ✅ Complete |
+| **Team Lead** | `TeamLeadCommandScreen` | `/api/v1/cases/team`<br>`/api/v1/collaboration/workload/team` | • Responsive vertical operator workload cards<br>• Capacity indicator progress bar & tokenized headers | ✅ Complete |
+| **Manager / Exec** | `ExecutiveAnalyticsScreen`<br>`ProblemManagementScreen` | `/api/v1/analytics/overview`<br>`/api/v1/analytics/trends`<br>`/api/v1/problems` | • Horizontal scrollable container on 7-day volume dynamics chart<br>• Tokenized KEDB clusters and problem records | ✅ Complete |
+| **Admin** | `AdminUserManagementScreen`<br>`AdminSettingsScreen` | `/api/v1/admin/users`<br>`/api/v1/admin/sla-policies`<br>`/api/v1/admin/escalation-rules` | • Replaced 500px void with Governance & Health Radar<br>• Mobile role update bottom sheet wired to `AdminApi` | ✅ Complete |
 
 ---
 

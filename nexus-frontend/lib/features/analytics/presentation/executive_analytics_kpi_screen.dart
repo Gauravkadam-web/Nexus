@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_typography.dart';
+import '../../../core/theme/theme_context_extensions.dart';
 import '../../../core/widgets/app_shell.dart';
 import '../../../core/widgets/responsive_layout.dart';
 import '../../../core/widgets/state_view_helpers.dart';
@@ -192,16 +193,16 @@ class _ExecutiveAnalyticsKpiScreenState extends ConsumerState<ExecutiveAnalytics
                     style: TextStyle(
                       fontSize: 11,
                       fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-                      color: isSelected ? AppColors.accentPrimary : AppColors.textSecondary,
+                      color: isSelected ? AppColors.accentPrimary : context.textSecondary,
                     ),
                   ),
                   selected: isSelected,
-                  selectedColor: const Color(0xFFEEF2FF),
-                  backgroundColor: Colors.white,
+                  selectedColor: context.isDark ? const Color(0xFF312E81) : const Color(0xFFEEF2FF),
+                  backgroundColor: context.cardBg,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(20),
                     side: BorderSide(
-                      color: isSelected ? AppColors.accentPrimary : AppColors.borderLight,
+                      color: isSelected ? AppColors.accentPrimary : context.border,
                     ),
                   ),
                   onSelected: (selected) {
@@ -220,7 +221,7 @@ class _ExecutiveAnalyticsKpiScreenState extends ConsumerState<ExecutiveAnalytics
           children: [
             Container(width: 6, height: 6, decoration: const BoxDecoration(color: Color(0xFF0D9488), shape: BoxShape.circle)),
             const SizedBox(width: 4),
-            const Text('Sync: 1m ago', style: TextStyle(fontSize: 10, color: AppColors.textMuted)),
+            Text('Sync: 1m ago', style: TextStyle(fontSize: 10, color: context.textMuted)),
           ],
         ),
       ],
@@ -245,6 +246,7 @@ class _ExecutiveAnalyticsKpiScreenState extends ConsumerState<ExecutiveAnalytics
           childAspectRatio: isWide ? 1.5 : 1.15,
           children: [
             _buildMetricTile(
+              context,
               title: 'Total Inflow',
               value: totalInflow,
               badgeText: 'Active Cases',
@@ -253,6 +255,7 @@ class _ExecutiveAnalyticsKpiScreenState extends ConsumerState<ExecutiveAnalytics
               icon: Icons.inbox_outlined,
             ),
             _buildMetricTile(
+              context,
               title: 'MTTR Mean',
               value: mttr,
               badgeText: 'Resolution Time',
@@ -261,6 +264,7 @@ class _ExecutiveAnalyticsKpiScreenState extends ConsumerState<ExecutiveAnalytics
               icon: Icons.speed_outlined,
             ),
             _buildMetricTile(
+              context,
               title: 'SLA Compliance',
               value: slaCompliance,
               badgeText: 'Target 95.0%',
@@ -269,6 +273,7 @@ class _ExecutiveAnalyticsKpiScreenState extends ConsumerState<ExecutiveAnalytics
               icon: Icons.verified_outlined,
             ),
             _buildMetricTile(
+              context,
               title: 'Active Open',
               value: openCount,
               badgeText: 'Under Ops',
@@ -282,7 +287,8 @@ class _ExecutiveAnalyticsKpiScreenState extends ConsumerState<ExecutiveAnalytics
     );
   }
 
-  Widget _buildMetricTile({
+  Widget _buildMetricTile(
+    BuildContext context, {
     required String title,
     required String value,
     required String badgeText,
@@ -293,9 +299,9 @@ class _ExecutiveAnalyticsKpiScreenState extends ConsumerState<ExecutiveAnalytics
     return Container(
       padding: const EdgeInsets.all(AppSpacing.sm + 2),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: context.cardBg,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.borderLight),
+        border: Border.all(color: context.border),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -306,10 +312,10 @@ class _ExecutiveAnalyticsKpiScreenState extends ConsumerState<ExecutiveAnalytics
             children: [
               Text(
                 title,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 11,
                   fontWeight: FontWeight.w600,
-                  color: AppColors.textSecondary,
+                  color: context.textSecondary,
                 ),
               ),
               Icon(icon, size: 16, color: badgeColor),
@@ -317,16 +323,16 @@ class _ExecutiveAnalyticsKpiScreenState extends ConsumerState<ExecutiveAnalytics
           ),
           Text(
             value,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 22,
               fontWeight: FontWeight.bold,
-              color: AppColors.textPrimary,
+              color: context.textPrimary,
             ),
           ),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
             decoration: BoxDecoration(
-              color: badgeBg,
+              color: context.isDark ? badgeColor.withValues(alpha: 0.2) : badgeBg,
               borderRadius: BorderRadius.circular(4),
             ),
             child: Text(
@@ -347,9 +353,11 @@ class _ExecutiveAnalyticsKpiScreenState extends ConsumerState<ExecutiveAnalytics
     return Container(
       padding: const EdgeInsets.all(AppSpacing.md),
       decoration: BoxDecoration(
-        color: const Color(0xFFFAF5FF),
+        color: context.isDark ? const Color(0xFF1E172E) : const Color(0xFFFAF5FF),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFC084FC).withValues(alpha: 0.3)),
+        border: Border.all(
+          color: const Color(0xFFC084FC).withValues(alpha: context.isDark ? 0.35 : 0.3),
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -370,10 +378,10 @@ class _ExecutiveAnalyticsKpiScreenState extends ConsumerState<ExecutiveAnalytics
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                 decoration: BoxDecoration(
-                  color: Colors.white,
+                  color: context.isDark ? const Color(0xFF2E1065) : Colors.white,
                   borderRadius: BorderRadius.circular(4),
                 ),
-                child: const Text('Realtime', style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: Color(0xFF9333EA))),
+                child: const Text('Realtime', style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: Color(0xFFC084FC))),
               ),
             ],
           ),
@@ -388,21 +396,24 @@ class _ExecutiveAnalyticsKpiScreenState extends ConsumerState<ExecutiveAnalytics
               }
               return Padding(
                 padding: const EdgeInsets.only(bottom: 6),
-                child: _buildDigestBullet(color: color, text: '${ins.title}: ${ins.description}'),
+                child: _buildDigestBullet(context, color: color, text: '${ins.title}: ${ins.description}'),
               );
             })
           else ...[
             _buildDigestBullet(
+              context,
               color: const Color(0xFFE11D48),
               text: 'SSO Gateway timeouts accounted for 34% of high-severity spikes this week.',
             ),
             const SizedBox(height: 6),
             _buildDigestBullet(
+              context,
               color: const Color(0xFF0D9488),
               text: 'Operator auto-rebalancing prevented potential SLA breaches in APAC handoff.',
             ),
             const SizedBox(height: 6),
             _buildDigestBullet(
+              context,
               color: const Color(0xFF9333EA),
               text: 'Resolution proposals were accepted without modification by lead responders.',
             ),
@@ -430,7 +441,7 @@ class _ExecutiveAnalyticsKpiScreenState extends ConsumerState<ExecutiveAnalytics
     );
   }
 
-  Widget _buildDigestBullet({required Color color, required String text}) {
+  Widget _buildDigestBullet(BuildContext context, {required Color color, required String text}) {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -446,7 +457,7 @@ class _ExecutiveAnalyticsKpiScreenState extends ConsumerState<ExecutiveAnalytics
         Expanded(
           child: Text(
             text,
-            style: const TextStyle(fontSize: 12, height: 1.4, color: AppColors.textPrimary),
+            style: TextStyle(fontSize: 12, height: 1.4, color: context.textPrimary),
           ),
         ),
       ],
@@ -457,9 +468,9 @@ class _ExecutiveAnalyticsKpiScreenState extends ConsumerState<ExecutiveAnalytics
     return Container(
       padding: const EdgeInsets.all(AppSpacing.md),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: context.cardBg,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.borderLight),
+        border: Border.all(color: context.border),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -474,53 +485,68 @@ class _ExecutiveAnalyticsKpiScreenState extends ConsumerState<ExecutiveAnalytics
               Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  _buildLegendIndicator('Incoming', const Color(0xFF6366F1)),
+                  _buildLegendIndicator(context, 'Incoming', const Color(0xFF6366F1)),
                   const SizedBox(width: 12),
-                  _buildLegendIndicator('Resolved', const Color(0xFF0D9488)),
+                  _buildLegendIndicator(context, 'Resolved', const Color(0xFF0D9488)),
                 ],
               ),
             ],
           ),
           const SizedBox(height: AppSpacing.md),
-          if (_trends.isNotEmpty)
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: _trends.take(7).map((t) {
-                const maxVal = 20.0;
-                final inRatio = (t.incoming / maxVal).clamp(0.1, 1.0);
-                final resRatio = (t.resolved / maxVal).clamp(0.1, 1.0);
-                final label = t.date.length > 5 ? t.date.substring(5) : t.date;
-                return _buildBarColumn(label, inRatio, resRatio);
-              }).toList(),
-            )
-          else
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                _buildBarColumn('W1', 0.6, 0.5),
-                _buildBarColumn('W2', 0.8, 0.75),
-                _buildBarColumn('W3', 0.95, 0.9),
-                _buildBarColumn('W4', 0.7, 0.72),
-              ],
-            ),
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final chartContent = _trends.isNotEmpty
+                  ? Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceAround,
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: _trends.take(7).map((t) {
+                        const maxVal = 20.0;
+                        final inRatio = (t.incoming / maxVal).clamp(0.1, 1.0);
+                        final resRatio = (t.resolved / maxVal).clamp(0.1, 1.0);
+                        final label = t.date.length > 5 ? t.date.substring(5) : t.date;
+                        return Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 6),
+                          child: _buildBarColumn(context, label, inRatio, resRatio),
+                        );
+                      }).toList(),
+                    )
+                  : Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceAround,
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        Padding(padding: const EdgeInsets.symmetric(horizontal: 6), child: _buildBarColumn(context, 'W1', 0.6, 0.5)),
+                        Padding(padding: const EdgeInsets.symmetric(horizontal: 6), child: _buildBarColumn(context, 'W2', 0.8, 0.75)),
+                        Padding(padding: const EdgeInsets.symmetric(horizontal: 6), child: _buildBarColumn(context, 'W3', 0.95, 0.9)),
+                        Padding(padding: const EdgeInsets.symmetric(horizontal: 6), child: _buildBarColumn(context, 'W4', 0.7, 0.72)),
+                      ],
+                    );
+
+              return SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                physics: const BouncingScrollPhysics(),
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(minWidth: constraints.maxWidth),
+                  child: chartContent,
+                ),
+              );
+            },
+          ),
         ],
       ),
     );
   }
 
-  Widget _buildLegendIndicator(String label, Color color) {
+  Widget _buildLegendIndicator(BuildContext context, String label, Color color) {
     return Row(
       children: [
         Container(width: 8, height: 8, decoration: BoxDecoration(color: color, shape: BoxShape.circle)),
         const SizedBox(width: 4),
-        Text(label, style: const TextStyle(fontSize: 11, color: AppColors.textSecondary)),
+        Text(label, style: TextStyle(fontSize: 11, color: context.textSecondary)),
       ],
     );
   }
 
-  Widget _buildBarColumn(String week, double inflowRatio, double resolvedRatio) {
+  Widget _buildBarColumn(BuildContext context, String week, double inflowRatio, double resolvedRatio) {
     return Column(
       children: [
         Row(
@@ -546,7 +572,7 @@ class _ExecutiveAnalyticsKpiScreenState extends ConsumerState<ExecutiveAnalytics
           ],
         ),
         const SizedBox(height: 6),
-        Text(week, style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: AppColors.textSecondary)),
+        Text(week, style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: context.textSecondary)),
       ],
     );
   }
@@ -555,9 +581,9 @@ class _ExecutiveAnalyticsKpiScreenState extends ConsumerState<ExecutiveAnalytics
     return Container(
       padding: const EdgeInsets.all(AppSpacing.md),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: context.cardBg,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.borderLight),
+        border: Border.all(color: context.border),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -569,29 +595,29 @@ class _ExecutiveAnalyticsKpiScreenState extends ConsumerState<ExecutiveAnalytics
             runSpacing: 4,
             children: [
               Text('Department SLA Compliance', style: AppTypography.titleMedium(context).copyWith(fontWeight: FontWeight.bold, fontSize: 14)),
-              const Text('Ranked by Speed', style: TextStyle(fontSize: 11, color: AppColors.textSecondary)),
+              Text('Ranked by Speed', style: TextStyle(fontSize: 11, color: context.textSecondary)),
             ],
           ),
           const SizedBox(height: AppSpacing.sm),
-          _buildDeptSlaRow('Core Infrastructure (SRE)', 98.4, const Color(0xFF0D9488)),
+          _buildDeptSlaRow(context, 'Core Infrastructure (SRE)', 98.4, const Color(0xFF0D9488)),
           const SizedBox(height: 8),
-          _buildDeptSlaRow('Identity & Security', 96.2, const Color(0xFF0284C7)),
+          _buildDeptSlaRow(context, 'Identity & Security', 96.2, const Color(0xFF0284C7)),
           const SizedBox(height: 8),
-          _buildDeptSlaRow('Billing & Payments', 92.5, const Color(0xFFD97706)),
+          _buildDeptSlaRow(context, 'Billing & Payments', 92.5, const Color(0xFFD97706)),
           const SizedBox(height: 8),
-          _buildDeptSlaRow('Corporate IT Services', 95.8, const Color(0xFF0D9488)),
+          _buildDeptSlaRow(context, 'Corporate IT Services', 95.8, const Color(0xFF0D9488)),
         ],
       ),
     );
   }
 
-  Widget _buildDeptSlaRow(String department, double compliance, Color color) {
+  Widget _buildDeptSlaRow(BuildContext context, String department, double compliance, Color color) {
     return Column(
       children: [
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text(department, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
+            Text(department, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: context.textPrimary)),
             Text('$compliance%', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: color)),
           ],
         ),
@@ -600,7 +626,7 @@ class _ExecutiveAnalyticsKpiScreenState extends ConsumerState<ExecutiveAnalytics
           borderRadius: BorderRadius.circular(3),
           child: LinearProgressIndicator(
             value: compliance / 100,
-            backgroundColor: const Color(0xFFE2E8F0),
+            backgroundColor: context.isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0),
             valueColor: AlwaysStoppedAnimation<Color>(color),
             minHeight: 5,
           ),

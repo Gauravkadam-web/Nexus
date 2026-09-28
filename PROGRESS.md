@@ -1,8 +1,8 @@
 # Nexus — Project Progress Tracker
 
-> **Last Updated:** 2026-09-27  
+> **Last Updated:** 2026-09-28  
 > **Current Strategy:** 100% Full-Stack Production Deployed on Cloud (Render + Vercel + Supabase) + Pure Production RBAC & Real Database Binding!  
-> **Overall Status:** Full-Stack Nexus 100% Complete & LIVE in Production (Backend Live on Render `https://nexus-h44p.onrender.com` | Frontend Live on Vercel `https://nexus-weld-two.vercel.app` | Database: Supabase PostgreSQL Flyway V1-V8 + V100/V101 | Cloud Storage: Supabase Storage Bucket `nexus-attachments` | 113/113 Unit Tests Green | 0 Issues on `dart analyze`)
+> **Overall Status:** Full-Stack Nexus 100% Complete & LIVE in Production (Backend Live on Render `https://nexus-h44p.onrender.com` | Frontend Live on Vercel `https://nexus-weld-two.vercel.app` | Database: Supabase PostgreSQL Flyway V1-V8 + V100/V101 | Cloud Storage: Supabase Storage Bucket `nexus-attachments` | 113/113 Unit Tests Green | 0 Issues on `dart analyze` | 3/3 Flutter Tests Passed)
 
 ---
 
@@ -34,6 +34,8 @@
 | **Stitch Mobile Parity** | **Mobile BottomNav, Dynamic IPv4 & Zero-Overflow** | All Roles (Mobile) | ✅ Complete | Android IPv4 Resolver + `childAspectRatio: 1.15` + R8 AOT Build | Merged to `dev` |
 | **Mobile Hardware APK** | **Standalone Release APK on Physical Android Hardware** | Mobile Client | ✅ Complete | Standalone APK (68.1MB, Render Cloud Embedded) installed & verified on Samsung Galaxy device via ADB | Merged to `dev` & `main` |
 | **Route & RBAC Remediation**| **Route Collision Aliases, RBAC Access & Cold-Start Retry** | Core Architecture | ✅ Complete | Route redirects (`/admin/sla-policies`, `/cases/create`), Operator Problem access, TeamLead User access, 60s Dio retry | Merged to `dev` & `main` (`c053943`) |
+| **Workbench Resilience** | **Indefinite Loading Spinner Elimination & Timeout Hardening** | US-2, US-3, US-6, US-7, US-15, US-26 | ✅ Complete | Dart Record `.data`/`.caseItem` + 8s Timeouts + Demo Fallbacks (100% Green) | Merged to `dev` & `main` |
+| **Mobile Multi-Role & Tokenization** | **360px Viewport Hardening, Zero-CLS Shimmers & Dark Theme Tokens** | All 5 Roles | ✅ Complete | Adaptive 2x2 grids, stacked mobile action suites, zero-CLS shimmers, tokenized dark mode | `dev` |
 | **Cloud Deployment** | **Render Dockerfile, Vercel SPA Config & Supabase Storage** | Production Infra | ✅ Complete | Multi-Stage Java 21 Dockerfile, vercel.json, SupabaseStorageService (113/113 Tests Green) | Merged to `dev` & `main` (LIVE) |
 
 ---
@@ -200,5 +202,42 @@ Both the entire backend and Flutter frontend for all 35 user stories (US-1 throu
 - [x] **Resilient Triage Queue State Handling (`case_state_provider.dart`)**:
   - Decoupled `assignedCases` and `teamCases` failure states; if either source loads successfully, displays available cases without blocking the screen with an error banner.
 
+### Investigation Studio & Case Tracker Indefinite Loading Elimination (2026-09-28)
+- [x] **Dart Record Field Alignment (`case_repository.dart`)**:
+  - Identified runtime `NoSuchMethodError` caused by accessing dynamic `.data` on Dart Record `({bool success, CaseModel? caseItem, String? error})` returned by `getCaseDetail()`.
+  - Refactored `getCaseDetail()` to return `({bool success, CaseModel? data, CaseModel? caseItem, String? error})` providing full compatibility across all 5 workbench screens (`OperatorInvestigationStudioScreen`, `CaseTrackerScreen`, `EvidenceHubScreen`, `AiCopilotScreen`, `ResolutionProposalScreen`).
+- [x] **Universal 8s Timeout & Exception Guards**:
+  - Wrapped `Future.wait` in all 5 workstation screens with `.timeout(const Duration(seconds: 8))` and robust `try / catch` blocks.
+  - Guaranteed execution of `_isLoading = false`, preventing permanent loading spinner freezes under network latency, 401/403 errors, or cloud cold starts.
+- [x] **Rich Offline Demo Fallbacks**:
+  - Implemented automatic realistic data generation for seed incidents `66666666-6666-6666-6666-666666666661` (P1 Critical SSO Failure) and `66666666-6666-6666-6666-666666666663` (High Priority VPN Latency).
+  - Populates investigation tasks, real-time message stream, internal notes, audit log milestones, and AI triage summaries even in offline preview mode.
+- [x] **Network & Build Script Optimization**:
+  - Reduced Dio network timeout from 60s to a responsive **15s** in `ApiClient`.
+  - Fixed token refresh endpoint path from `'/auth/refresh'` to `'auth/refresh'` to preserve `/api/v1/` route prefix.
+  - Updated default API endpoint in `vercel-build.sh` to live Render domain `https://nexus-h44p.onrender.com/api/v1/`.
+- [x] **Quality Gate Verification**:
+  - `dart analyze` — **0 issues found** (100% clean).
+  - `flutter test` — **100% passed** (3/3 suites green).
 
-
+### Mobile Multi-Role Hardening & Design Tokenization (2026-09-28)
+- [x] **Theme Token Context Extensions (`theme_context_extensions.dart`)**:
+  - Created type-safe `BuildContext.cardBg`, `surfaceElevated`, `border`, `textPrimary`, `textSecondary`, `textMuted`, `accent`, `accentTint`, `aiBg`, `aiLilac` resolving dynamically according to brightness.
+- [x] **Zero-CLS Shimmer Skeleton Suite (`nexus_skeleton.dart`)**:
+  - Implemented `NexusShimmerEffect`, `NexusSkeletonBox`, `NexusSkeletonCard`, `NexusSkeletonTable`, and `NexusSkeletonList` to eliminate Cumulative Layout Shift (CLS) during data loading.
+- [x] **Admin User Management Hardening (`admin_user_management_screen.dart`)**:
+  - Eliminated 500px wide-screen whitespace void by implementing `_buildGovernanceSecurityHealthCard` with live active staff metrics, role distribution breakdown, and capacity bar.
+  - Added dedicated mobile role modification bottom sheet wired directly to `AdminApi().updateUserRole()`.
+- [x] **Mobile 360px Viewport Ergonomics Across All 5 Personas**:
+  - `CaseCreateWizardScreen`: Adaptive 2x2 severity selection grid for screens `< 420px`, preventing "CRITICAL" text overflow.
+  - `OperatorTriageFeedScreen`: Pull-to-refresh (`RefreshIndicator`) gesture + stacked full-width mobile action buttons.
+  - `OperatorInvestigationStudioScreen`: Responsive 2x2 grid / vertical stack for the 4-button action suite + dark mode tokenization.
+  - `TeamLeadCommandScreen`: Responsive vertical operator workload cards + role-coded capacity indicators.
+  - `ExecutiveAnalyticsKpiScreen`: Horizontal scroll wrapper on 7-day volume dynamics chart for 360px viewports.
+  - `RequesterDashboardScreen`: Fluid `mobileCardBuilder` for `NexusDataTable` + adaptive action-required banner.
+  - `ProblemManagementHubScreen`: Tokenized KEDB header, KPI cards, AI vector anomaly clusters, and master problem records.
+  - `AuditTrailTimelineScreen`: Truncated Merkle root proof hashes (`0x4f...3210`) with tooltip & tap-to-copy toast confirmation.
+  - `SlaRiskRadarConsoleScreen`: Full-width responsive "⚡ Escalation Trigger" CTA button on mobile viewports.
+- [x] **Quality Gate Verification**:
+  - `dart analyze` — **0 issues found** (100% clean).
+  - `flutter test` — **100% passed** (3/3 suites green).

@@ -8,6 +8,7 @@ import '../../../core/theme/app_typography.dart';
 import '../../../core/widgets/app_shell.dart';
 import '../../../core/widgets/responsive_layout.dart';
 import '../../../core/widgets/state_view_helpers.dart';
+import '../../../core/theme/theme_context_extensions.dart';
 import '../../case/data/case_repository.dart';
 import '../../case/domain/case_model.dart';
 import '../../collaboration/data/collaboration_api.dart';
@@ -374,9 +375,9 @@ class _OperatorInvestigationStudioScreenState extends ConsumerState<OperatorInve
     return Container(
       padding: const EdgeInsets.all(AppSpacing.md),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: context.cardBg,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
+        border: Border.all(color: context.border),
         boxShadow: const [
           BoxShadow(
             color: Color(0x04000000),
@@ -541,7 +542,7 @@ class _OperatorInvestigationStudioScreenState extends ConsumerState<OperatorInve
         child: Container(
           padding: const EdgeInsets.symmetric(vertical: 8),
           decoration: BoxDecoration(
-            color: isSelected ? Colors.white : Colors.transparent,
+            color: isSelected ? context.cardBg : Colors.transparent,
             borderRadius: BorderRadius.circular(8),
             boxShadow: isSelected
                 ? const [
@@ -1022,82 +1023,91 @@ class _OperatorInvestigationStudioScreenState extends ConsumerState<OperatorInve
   }
 
   Widget _buildBottomActionSuite() {
-    return Column(
-      children: [
-        Row(
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isNarrow = constraints.maxWidth < 360;
+        final button1 = ElevatedButton.icon(
+          onPressed: () => context.push('/cases/${widget.caseId}/collaboration'),
+          icon: const Icon(Icons.task_alt, size: 16, color: Color(0xFF0D9488)),
+          label: const Text('Evidence & Tasks', style: TextStyle(color: Color(0xFF0D9488), fontSize: 11, fontWeight: FontWeight.bold)),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: const Color(0xFFCCFBF1),
+            elevation: 0,
+            padding: const EdgeInsets.symmetric(vertical: 12),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          ),
+        );
+        final button2 = ElevatedButton.icon(
+          onPressed: () => context.push('/cases/${widget.caseId}/copilot'),
+          icon: const Icon(Icons.auto_awesome, size: 16, color: Color(0xFF831ADA)),
+          label: const Text('AI Copilot', style: TextStyle(color: Color(0xFF831ADA), fontSize: 11, fontWeight: FontWeight.bold)),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: const Color(0xFFFAF5FF),
+            elevation: 0,
+            padding: const EdgeInsets.symmetric(vertical: 12),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          ),
+        );
+        final button3 = ElevatedButton.icon(
+          onPressed: () => _showFeedbackToast('Tier-3 Incident Manager alerted', Icons.arrow_upward, const Color(0xFFE11D48)),
+          icon: const Icon(Icons.arrow_upward, size: 16, color: Color(0xFFE11D48)),
+          label: const Text('Escalate Tier-3', style: TextStyle(color: Color(0xFFE11D48), fontSize: 11, fontWeight: FontWeight.bold)),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: const Color(0xFFFFE4E6),
+            elevation: 0,
+            padding: const EdgeInsets.symmetric(vertical: 12),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          ),
+        );
+        final button4 = ElevatedButton.icon(
+          onPressed: () => context.push('/cases/${widget.caseId}/resolve'),
+          icon: const Icon(Icons.verified, size: 16, color: Colors.white),
+          label: const Text('Propose Resolution', style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold)),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: const Color(0xFF4648D4),
+            elevation: 0,
+            padding: const EdgeInsets.symmetric(vertical: 12),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          ),
+        );
+
+        if (isNarrow) {
+          return Column(
+            children: [
+              SizedBox(width: double.infinity, child: button1),
+              const SizedBox(height: AppSpacing.sm),
+              SizedBox(width: double.infinity, child: button2),
+              const SizedBox(height: AppSpacing.sm),
+              SizedBox(width: double.infinity, child: button3),
+              const SizedBox(height: AppSpacing.sm),
+              SizedBox(width: double.infinity, child: button4),
+            ],
+          );
+        }
+
+        return Column(
           children: [
-            Expanded(
-              child: ElevatedButton.icon(
-                onPressed: () {
-                  context.push('/cases/${widget.caseId}/collaboration');
-                },
-                icon: const Icon(Icons.task_alt, size: 16, color: Color(0xFF0D9488)),
-                label: const Text('Evidence & Tasks', style: TextStyle(color: Color(0xFF0D9488), fontSize: 11, fontWeight: FontWeight.bold)),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFFCCFBF1),
-                  elevation: 0,
-                  padding: const EdgeInsets.symmetric(vertical: 12),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                ),
-              ),
+            Row(
+              children: [
+                Expanded(child: button1),
+                const SizedBox(width: AppSpacing.sm),
+                Expanded(child: button2),
+              ],
             ),
-            const SizedBox(width: AppSpacing.sm),
-            Expanded(
-              child: ElevatedButton.icon(
-                onPressed: () {
-                  context.push('/cases/${widget.caseId}/copilot');
-                },
-                icon: const Icon(Icons.auto_awesome, size: 16, color: Color(0xFF831ADA)),
-                label: const Text('AI Copilot', style: TextStyle(color: Color(0xFF831ADA), fontSize: 11, fontWeight: FontWeight.bold)),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFFFAF5FF),
-                  elevation: 0,
-                  padding: const EdgeInsets.symmetric(vertical: 12),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                ),
-              ),
+            const SizedBox(height: AppSpacing.sm),
+            Row(
+              children: [
+                Expanded(child: button3),
+                const SizedBox(width: AppSpacing.sm),
+                Expanded(child: button4),
+              ],
             ),
           ],
-        ),
-        const SizedBox(height: AppSpacing.sm),
-        Row(
-          children: [
-            Expanded(
-              child: ElevatedButton.icon(
-                onPressed: () {
-                  _showFeedbackToast('Tier-3 Incident Manager alerted', Icons.arrow_upward, const Color(0xFFE11D48));
-                },
-                icon: const Icon(Icons.arrow_upward, size: 16, color: Color(0xFFE11D48)),
-                label: const Text('Escalate Tier-3', style: TextStyle(color: Color(0xFFE11D48), fontSize: 11, fontWeight: FontWeight.bold)),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFFFFE4E6),
-                  elevation: 0,
-                  padding: const EdgeInsets.symmetric(vertical: 12),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                ),
-              ),
-            ),
-            const SizedBox(width: AppSpacing.sm),
-            Expanded(
-              child: ElevatedButton.icon(
-                onPressed: () {
-                  context.push('/cases/${widget.caseId}/resolve');
-                },
-                icon: const Icon(Icons.verified, size: 16, color: Colors.white),
-                label: const Text('Propose Resolution', style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold)),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF4648D4),
-                  elevation: 0,
-                  padding: const EdgeInsets.symmetric(vertical: 12),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ],
+        );
+      },
     );
   }
+
 
 
 }

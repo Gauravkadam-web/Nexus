@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_typography.dart';
+import '../../../core/theme/theme_context_extensions.dart';
 import '../../../core/widgets/app_shell.dart';
 import '../../../core/widgets/responsive_layout.dart';
 import '../../../core/widgets/state_view_helpers.dart';
@@ -164,9 +165,9 @@ class _ProblemManagementHubScreenState extends ConsumerState<ProblemManagementHu
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.sm),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: context.cardBg,
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: AppColors.borderLight),
+        border: Border.all(color: context.border),
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -176,7 +177,7 @@ class _ProblemManagementHubScreenState extends ConsumerState<ProblemManagementHu
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFF3E8FF),
+                  color: context.isDark ? const Color(0xFF2E1065) : const Color(0xFFF3E8FF),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: const Row(
@@ -191,9 +192,9 @@ class _ProblemManagementHubScreenState extends ConsumerState<ProblemManagementHu
                 ),
               ),
               const SizedBox(width: 8),
-              const Text(
+              Text(
                 'Vector Space Active',
-                style: TextStyle(fontSize: 11, color: AppColors.textSecondary),
+                style: TextStyle(fontSize: 11, color: context.textSecondary),
               ),
             ],
           ),
@@ -226,6 +227,7 @@ class _ProblemManagementHubScreenState extends ConsumerState<ProblemManagementHu
           childAspectRatio: isWide ? 1.5 : 1.15,
           children: [
             _buildKpiCard(
+              context,
               title: 'ACTIVE PROBLEMS',
               value: '$activeCount',
               badgeText: 'ITIL v4',
@@ -234,6 +236,7 @@ class _ProblemManagementHubScreenState extends ConsumerState<ProblemManagementHu
               icon: Icons.psychology_outlined,
             ),
             _buildKpiCard(
+              context,
               title: 'LINKED INCIDENTS',
               value: '$totalLinked',
               badgeText: 'Cross-Domain',
@@ -242,6 +245,7 @@ class _ProblemManagementHubScreenState extends ConsumerState<ProblemManagementHu
               icon: Icons.hub_outlined,
             ),
             _buildKpiCard(
+              context,
               title: 'AI PATTERNS',
               value: '${_patterns.length}',
               badgeText: 'Vector Space',
@@ -250,6 +254,7 @@ class _ProblemManagementHubScreenState extends ConsumerState<ProblemManagementHu
               icon: Icons.auto_awesome,
             ),
             _buildKpiCard(
+              context,
               title: 'AVG RCA TIME',
               value: '1.8d',
               badgeText: 'Target <3.0d',
@@ -263,7 +268,8 @@ class _ProblemManagementHubScreenState extends ConsumerState<ProblemManagementHu
     );
   }
 
-  Widget _buildKpiCard({
+  Widget _buildKpiCard(
+    BuildContext context, {
     required String title,
     required String value,
     required String badgeText,
@@ -274,9 +280,9 @@ class _ProblemManagementHubScreenState extends ConsumerState<ProblemManagementHu
     return Container(
       padding: const EdgeInsets.all(AppSpacing.sm + 2),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: context.cardBg,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.borderLight),
+        border: Border.all(color: context.border),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -287,10 +293,10 @@ class _ProblemManagementHubScreenState extends ConsumerState<ProblemManagementHu
             children: [
               Text(
                 title,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 10,
                   fontWeight: FontWeight.w700,
-                  color: AppColors.textSecondary,
+                  color: context.textSecondary,
                   letterSpacing: 0.5,
                 ),
               ),
@@ -299,16 +305,16 @@ class _ProblemManagementHubScreenState extends ConsumerState<ProblemManagementHu
           ),
           Text(
             value,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 22,
               fontWeight: FontWeight.bold,
-              color: AppColors.textPrimary,
+              color: context.textPrimary,
             ),
           ),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
             decoration: BoxDecoration(
-              color: badgeBg,
+              color: context.isDark ? badgeColor.withValues(alpha: 0.2) : badgeBg,
               borderRadius: BorderRadius.circular(4),
             ),
             child: Text(
@@ -330,11 +336,11 @@ class _ProblemManagementHubScreenState extends ConsumerState<ProblemManagementHu
       return Container(
         padding: const EdgeInsets.all(AppSpacing.md),
         decoration: BoxDecoration(
-          color: const Color(0xFFFAF5FF),
+          color: context.isDark ? const Color(0xFF1E172E) : const Color(0xFFFAF5FF),
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: const Color(0xFFC084FC).withValues(alpha: 0.3)),
+          border: Border.all(color: const Color(0xFFC084FC).withValues(alpha: context.isDark ? 0.35 : 0.3)),
         ),
-        child: const Text('No active recurring pattern anomalies detected in vector embeddings.', style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+        child: Text('No active recurring pattern anomalies detected in vector embeddings.', style: TextStyle(fontSize: 12, color: context.textSecondary)),
       );
     }
 
@@ -344,9 +350,9 @@ class _ProblemManagementHubScreenState extends ConsumerState<ProblemManagementHu
     return Container(
       padding: const EdgeInsets.all(AppSpacing.md),
       decoration: BoxDecoration(
-        color: const Color(0xFFFAF5FF),
+        color: context.isDark ? const Color(0xFF1E172E) : const Color(0xFFFAF5FF),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFC084FC).withValues(alpha: 0.3)),
+        border: Border.all(color: const Color(0xFFC084FC).withValues(alpha: context.isDark ? 0.35 : 0.3)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -367,24 +373,24 @@ class _ProblemManagementHubScreenState extends ConsumerState<ProblemManagementHu
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFF3E8FF),
+                  color: context.isDark ? const Color(0xFF2E1065) : const Color(0xFFF3E8FF),
                   borderRadius: BorderRadius.circular(4),
                 ),
-                child: Text('$similarityPct% Match', style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Color(0xFF9333EA))),
+                child: Text('$similarityPct% Match', style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Color(0xFFC084FC))),
               ),
             ],
           ),
           const SizedBox(height: 6),
           Text(
             '${topPattern.caseCount} incidents identified in vector space sharing ${topPattern.primaryCategory} operational signatures.',
-            style: AppTypography.bodySmall(context).copyWith(color: AppColors.textSecondary),
+            style: AppTypography.bodySmall(context).copyWith(color: context.textSecondary),
           ),
           const SizedBox(height: 8),
           if (topPattern.sampleCaseTitles.isNotEmpty)
             Wrap(
               spacing: 6,
               runSpacing: 4,
-              children: topPattern.sampleCaseTitles.map((t) => _buildCasePill(t)).toList(),
+              children: topPattern.sampleCaseTitles.map((t) => _buildCasePill(context, t)).toList(),
             ),
           const SizedBox(height: AppSpacing.sm),
           Row(
@@ -407,13 +413,13 @@ class _ProblemManagementHubScreenState extends ConsumerState<ProblemManagementHu
     );
   }
 
-  Widget _buildCasePill(String caseId) {
+  Widget _buildCasePill(BuildContext context, String caseId) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: context.cardBg,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.borderLight),
+        border: Border.all(color: context.border),
       ),
       child: Text(
         caseId,
@@ -440,9 +446,9 @@ class _ProblemManagementHubScreenState extends ConsumerState<ProblemManagementHu
     return Container(
       padding: const EdgeInsets.all(AppSpacing.md),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: context.cardBg,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.borderLight),
+        border: Border.all(color: context.border),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -456,7 +462,7 @@ class _ProblemManagementHubScreenState extends ConsumerState<ProblemManagementHu
               ),
               Text(
                 '${_problems.length} Active Records',
-                style: const TextStyle(fontSize: 11, color: AppColors.textSecondary),
+                style: TextStyle(fontSize: 11, color: context.textSecondary),
               ),
             ],
           ),
@@ -466,6 +472,7 @@ class _ProblemManagementHubScreenState extends ConsumerState<ProblemManagementHu
             return Padding(
               padding: const EdgeInsets.only(bottom: AppSpacing.sm),
               child: _buildProblemRecordCard(
+                context,
                 problemId: 'PRB-$shortId',
                 title: p.title,
                 category: 'Operational Problem',
@@ -481,7 +488,8 @@ class _ProblemManagementHubScreenState extends ConsumerState<ProblemManagementHu
     );
   }
 
-  Widget _buildProblemRecordCard({
+  Widget _buildProblemRecordCard(
+    BuildContext context, {
     required String problemId,
     required String title,
     required String category,
@@ -493,9 +501,9 @@ class _ProblemManagementHubScreenState extends ConsumerState<ProblemManagementHu
     return Container(
       padding: const EdgeInsets.all(AppSpacing.md),
       decoration: BoxDecoration(
-        color: const Color(0xFFF8FAFC),
+        color: context.surfaceElevated,
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: AppColors.borderLight),
+        border: Border.all(color: context.border),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -513,7 +521,7 @@ class _ProblemManagementHubScreenState extends ConsumerState<ProblemManagementHu
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                     decoration: BoxDecoration(
-                      color: const Color(0xFFEEF2FF),
+                      color: context.isDark ? const Color(0xFF312E81) : const Color(0xFFEEF2FF),
                       borderRadius: BorderRadius.circular(4),
                     ),
                     child: Text(
@@ -526,7 +534,7 @@ class _ProblemManagementHubScreenState extends ConsumerState<ProblemManagementHu
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFCCFBF1),
+                  color: context.isDark ? const Color(0xFF064E3B) : const Color(0xFFCCFBF1),
                   borderRadius: BorderRadius.circular(4),
                 ),
                 child: Text(
@@ -539,12 +547,12 @@ class _ProblemManagementHubScreenState extends ConsumerState<ProblemManagementHu
           const SizedBox(height: 6),
           Text(
             title,
-            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: AppColors.textPrimary),
+            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: context.textPrimary),
           ),
           const SizedBox(height: 4),
           Text(
             'Root Cause: $rootCause',
-            style: const TextStyle(fontSize: 12, color: AppColors.textSecondary, height: 1.3),
+            style: TextStyle(fontSize: 12, color: context.textSecondary, height: 1.3),
           ),
           const SizedBox(height: 8),
           Row(
@@ -552,11 +560,11 @@ class _ProblemManagementHubScreenState extends ConsumerState<ProblemManagementHu
             children: [
               Row(
                 children: [
-                  const Icon(Icons.hub_outlined, size: 14, color: AppColors.textSecondary),
+                  Icon(Icons.hub_outlined, size: 14, color: context.textSecondary),
                   const SizedBox(width: 4),
                   Text(
                     '$linkedIncidentsCount Linked Incidents',
-                    style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.textSecondary),
+                    style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: context.textSecondary),
                   ),
                 ],
               ),

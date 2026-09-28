@@ -1,4 +1,4 @@
-4# Nexus Platform — Feature Audit & Testing Status
+# Nexus Platform — Feature Audit & Testing Status
 
 > **Document Version:** 1.0.0  
 > **Date:** September 23, 2026  
@@ -41,6 +41,7 @@
   - 5-stage milestone progression stepper.
   - AI triage diagnostic summary card.
   - Public communication log & note dispatch form.
+  - **Async Loading Resilience**: Bound with 8s timeout, `try/catch` guard, and instant demo timeline fallback (`66666666-6666-6666-6666-666666666663`).
 
 ---
 
@@ -55,9 +56,11 @@
   - Segmented tab rail: AI Triage, Activity Stream (Messages & Notes), Tasks.
   - Dual-mode composer: Public message vs Internal confidential note.
   - Studio bottom action suite linking to Evidence Hub, Copilot, Escalate, and Resolve.
+  - **Async Loading Resilience**: Eliminated indefinite loading spinner via Dart Record `.data`/`.caseItem` harmonization, 8s Future timeout, and seed incident fallback (`66666666-6666-6666-6666-666666666661`).
 - [x] **Collaboration & Evidence Hub (`/cases/:id/collaboration`):**
   - Urgency header with quick navigation back to Studio and forward to Copilot.
   - Remediation task checklist, confidential war room notes, and evidence locker.
+  - **Async Loading Resilience**: Bound with 8s timeout, `try/catch` guard, and safe case model initialization.
 
 ---
 
@@ -137,6 +140,22 @@
 - [x] **Expanded Admin User Directory RBAC:** `AdminUserController` opened to `TEAM_LEAD` for operator roster and capacity calculations.
 - [x] **Unassigned Operator Team Case Fallback:** `CaseService.listTeamCases` gracefully falls back to organization-wide cases when operator has null `teamId`.
 - [x] **Cloud Cold-Start Auto-Retry:** 60s Dio timeouts + automatic 2s delay retry interceptor for 503 and connection timeouts on Render backend.
+
+---
+
+### M. Mobile Multi-Role Hardening & Design Tokenization (2026-09-28)
+- [x] **Theme Token Context Extensions (`theme_context_extensions.dart`):** Dynamic brightness-aware tokens (`cardBg`, `surfaceElevated`, `border`, `textPrimary`, `textSecondary`, `textMuted`, `accent`, `accentTint`, `aiBg`, `aiLilac`).
+- [x] **Zero-CLS Shimmer Skeletons (`nexus_skeleton.dart`):** Replaced abrupt circular progress indicators with `NexusShimmerEffect`, `NexusSkeletonBox`, `NexusSkeletonCard`, `NexusSkeletonTable`, and `NexusSkeletonList`.
+- [x] **Admin Whitespace Void Elimination (`admin_user_management_screen.dart`):** Built `_buildGovernanceSecurityHealthCard` occupying wide-screen right panel with live staff capacity bar and role distribution.
+- [x] **Mobile Role Modification Sheet:** Added mobile role assignment modal directly connected to `AdminApi().updateUserRole()`.
+- [x] **Adaptive 2x2 Severity Grid (`case_create_wizard_screen.dart`):** Viewport-aware grid for screens `< 420px`, preventing "CRITICAL" text clipping on 360px devices.
+- [x] **Operator Triage Ergonomics (`operator_triage_feed_screen.dart`):** Native `RefreshIndicator` pull-to-refresh + responsive full-width action button stack.
+- [x] **Studio 4-Button Responsive Suite (`operator_investigation_studio_screen.dart`):** 2x2 action grid on mobile viewports + full dark mode tokenization.
+- [x] **Team Lead Workload Cards (`team_lead_command_screen.dart`):** Responsive vertical cards with capacity indicators.
+- [x] **Executive 7-Day Chart Scroll (`executive_analytics_kpi_screen.dart`):** Horizontal scroll container preventing bar collision on 360px mobile width.
+- [x] **Requester Fluid Mobile Cards (`requester_dashboard_screen.dart`):** `mobileCardBuilder` for native mobile card experience on data tables.
+- [x] **Cryptographic Hash Truncation (`audit_trail_timeline_screen.dart`):** Truncated Merkle proof hashes (`0x4f...3210`) with tooltip & tap-to-copy clipboard confirmation.
+- [x] **SLA Radar Responsive CTA (`sla_risk_radar_console_screen.dart`):** Full-width "⚡ Escalation Trigger" button on mobile viewports.
 
 ---
 

@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_typography.dart';
+import '../../../core/theme/theme_context_extensions.dart';
 import '../../../core/widgets/app_shell.dart';
 import '../../../core/widgets/kpi_card.dart';
 import '../../../core/widgets/nexus_button.dart';
@@ -206,11 +207,11 @@ class RequesterDashboardScreen extends ConsumerWidget {
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                     decoration: BoxDecoration(
-                      color: isDark ? AppColors.darkSurfaceElevated : AppColors.lightSurfaceElevated,
+                      color: context.surfaceElevated,
                       borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
-                      border: Border.all(color: isDark ? AppColors.darkBorder : AppColors.lightBorder),
+                      border: Border.all(color: context.border),
                     ),
-                    child: Text(item.id, style: AppTypography.codeSmall(isDark)),
+                    child: Text(item.id, style: AppTypography.codeSmall(context)),
                   ),
 
                   // Subject & Title
@@ -221,7 +222,7 @@ class RequesterDashboardScreen extends ConsumerWidget {
                       Text(
                         item.title,
                         style: TextStyle(
-                          color: isDark ? AppColors.darkTextPrimary : AppColors.lightTextPrimary,
+                          color: context.textPrimary,
                           fontWeight: FontWeight.w600,
                           fontSize: 13,
                         ),
@@ -230,7 +231,7 @@ class RequesterDashboardScreen extends ConsumerWidget {
                       ),
                       Text(
                         item.description,
-                        style: AppTypography.bodySmall(isDark).copyWith(fontSize: 12),
+                        style: AppTypography.bodySmall(context).copyWith(fontSize: 12),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
@@ -241,13 +242,13 @@ class RequesterDashboardScreen extends ConsumerWidget {
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                     decoration: BoxDecoration(
-                      color: isDark ? AppColors.accentTintDark : AppColors.accentTintLight,
+                      color: context.accentTint,
                       borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
                     ),
                     child: Text(
                       item.categoryName ?? 'IT Support',
                       style: TextStyle(
-                        color: isDark ? AppColors.accentPrimaryDark : AppColors.accentPrimary,
+                        color: context.accent,
                         fontSize: 11,
                         fontWeight: FontWeight.w600,
                       ),
@@ -258,17 +259,17 @@ class RequesterDashboardScreen extends ConsumerWidget {
                   StatusBadge(status: item.status),
 
                   // Milestone Progress Bar
-                  _buildMilestoneStepper(isDark, item.milestoneStep),
+                  _buildMilestoneStepper(context, item.milestoneStep),
 
                   // Action Button
                   IconButton(
                     icon: const Icon(Icons.arrow_forward, size: 16),
-                    color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
+                    color: context.textSecondary,
                     onPressed: () => context.go('/cases/${item.id}/track'),
                   ),
                 ];
               },
-              mobileCardBuilder: (context, item, index) => _buildCaseCard(context, isDark, item),
+              mobileCardBuilder: (context, item, index) => _buildCaseCard(context, item),
             ),
             const SizedBox(height: AppSpacing.xxl),
           ],
@@ -341,6 +342,99 @@ class RequesterDashboardScreen extends ConsumerWidget {
   }
 
   Widget _buildActionRequiredBanner(BuildContext context, bool isDark) {
+    final isMobile = ResponsiveLayout.isMobile(context);
+    final actionButtons = Wrap(
+      spacing: AppSpacing.xs,
+      runSpacing: AppSpacing.xs,
+      children: [
+        OutlinedButton(
+          onPressed: () => context.go('/cases/NEX-2026-0042/track'),
+          style: OutlinedButton.styleFrom(
+            side: BorderSide(color: context.border),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppSpacing.radiusMd)),
+            backgroundColor: context.cardBg,
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          ),
+          child: Text('View Case', style: AppTypography.bodySmall(context).copyWith(fontWeight: FontWeight.w600)),
+        ),
+        NexusButton(
+          text: 'Reply & Upload Log',
+          icon: Icons.upload_file,
+          height: 36,
+          onPressed: () => context.go('/cases/NEX-2026-0042/track'),
+        ),
+      ],
+    );
+
+    if (isMobile) {
+      return Container(
+        padding: const EdgeInsets.all(AppSpacing.md),
+        decoration: BoxDecoration(
+          color: isDark ? AppColors.statusWaitingBgDark : AppColors.statusWaitingBgLight,
+          borderRadius: BorderRadius.circular(AppSpacing.radiusXl),
+          border: Border.all(
+            color: (isDark ? AppColors.statusWaitingTextDark : AppColors.statusWaitingTextLight).withValues(alpha: 0.4),
+          ),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  width: 36,
+                  height: 36,
+                  decoration: BoxDecoration(
+                    color: context.cardBg,
+                    shape: BoxShape.circle,
+                    boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 4)],
+                  ),
+                  child: Icon(
+                    Icons.priority_high,
+                    size: 18,
+                    color: isDark ? AppColors.statusWaitingTextDark : AppColors.statusWaitingTextLight,
+                  ),
+                ),
+                const SizedBox(width: AppSpacing.sm),
+                Expanded(
+                  child: Wrap(
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    spacing: AppSpacing.xs,
+                    runSpacing: 2,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                        decoration: BoxDecoration(
+                          color: context.cardBg,
+                          borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
+                        ),
+                        child: Text('NEX-2026-0042', style: AppTypography.codeSmall(context)),
+                      ),
+                      Text(
+                        'needs your attention',
+                        style: TextStyle(
+                          color: context.textPrimary,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 13,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: AppSpacing.sm),
+            Text(
+              'Operator Elena Vance requested your VPN / Envoy debug client logs to trace proxy disconnection.',
+              style: AppTypography.bodySmall(context),
+            ),
+            const SizedBox(height: AppSpacing.sm),
+            actionButtons,
+          ],
+        ),
+      );
+    }
+
     return Container(
       padding: const EdgeInsets.all(AppSpacing.md),
       decoration: BoxDecoration(
@@ -357,7 +451,7 @@ class RequesterDashboardScreen extends ConsumerWidget {
             width: 40,
             height: 40,
             decoration: BoxDecoration(
-              color: isDark ? AppColors.darkSurface : AppColors.lightSurface,
+              color: context.cardBg,
               shape: BoxShape.circle,
               boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 4)],
             ),
@@ -380,15 +474,15 @@ class RequesterDashboardScreen extends ConsumerWidget {
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
                       decoration: BoxDecoration(
-                        color: isDark ? AppColors.darkSurface : AppColors.lightSurface,
+                        color: context.cardBg,
                         borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
                       ),
-                      child: Text('NEX-2026-0042', style: AppTypography.codeSmall(isDark)),
+                      child: Text('NEX-2026-0042', style: AppTypography.codeSmall(context)),
                     ),
                     Text(
                       'needs your immediate attention',
                       style: TextStyle(
-                        color: isDark ? AppColors.darkTextPrimary : AppColors.lightTextPrimary,
+                        color: context.textPrimary,
                         fontWeight: FontWeight.w600,
                         fontSize: 13,
                       ),
@@ -398,49 +492,28 @@ class RequesterDashboardScreen extends ConsumerWidget {
                 const SizedBox(height: 2),
                 Text(
                   'Operator Elena Vance requested your VPN / Envoy debug client logs to trace proxy disconnection.',
-                  style: AppTypography.bodySmall(isDark),
+                  style: AppTypography.bodySmall(context),
                 ),
               ],
             ),
           ),
           const SizedBox(width: AppSpacing.md),
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              OutlinedButton(
-                onPressed: () => context.go('/cases/NEX-2026-0042/track'),
-                style: OutlinedButton.styleFrom(
-                  side: BorderSide(color: isDark ? AppColors.darkBorder : AppColors.lightBorder),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppSpacing.radiusMd)),
-                  backgroundColor: isDark ? AppColors.darkSurface : AppColors.lightSurface,
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                ),
-                child: Text('View Case', style: AppTypography.bodySmall(isDark).copyWith(fontWeight: FontWeight.w600)),
-              ),
-              const SizedBox(width: AppSpacing.xs),
-              NexusButton(
-                text: 'Reply & Upload Log',
-                icon: Icons.upload_file,
-                height: 36,
-                onPressed: () => context.go('/cases/NEX-2026-0042/track'),
-              ),
-            ],
-          ),
+          actionButtons,
         ],
       ),
     );
   }
 
-  Widget _buildCaseCard(BuildContext context, bool isDark, CaseModel item) {
+  Widget _buildCaseCard(BuildContext context, CaseModel item) {
     final formattedDate = DateFormat('MMM dd, yyyy').format(item.createdAt);
 
     return Container(
       margin: const EdgeInsets.only(bottom: AppSpacing.sm),
       padding: const EdgeInsets.all(AppSpacing.cardPaddingMobile),
       decoration: BoxDecoration(
-        color: isDark ? AppColors.darkSurface : AppColors.lightSurface,
+        color: context.cardBg,
         borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
-        border: Border.all(color: isDark ? AppColors.darkBorder : AppColors.lightBorder),
+        border: Border.all(color: context.border),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -451,30 +524,30 @@ class RequesterDashboardScreen extends ConsumerWidget {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                 decoration: BoxDecoration(
-                  color: isDark ? AppColors.darkSurfaceElevated : AppColors.lightSurfaceElevated,
+                  color: context.surfaceElevated,
                   borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
                 ),
-                child: Text(item.id, style: AppTypography.codeSmall(isDark)),
+                child: Text(item.id, style: AppTypography.codeSmall(context)),
               ),
               StatusBadge(status: item.status),
             ],
           ),
           const SizedBox(height: AppSpacing.sm),
-          Text(item.title, style: AppTypography.titleMedium(isDark)),
+          Text(item.title, style: AppTypography.titleMedium(context)),
           const SizedBox(height: 2),
           Text(
             item.description,
-            style: AppTypography.bodySmall(isDark),
+            style: AppTypography.bodySmall(context),
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
           ),
           const SizedBox(height: AppSpacing.sm),
-          _buildMilestoneStepper(isDark, item.milestoneStep),
+          _buildMilestoneStepper(context, item.milestoneStep),
           const SizedBox(height: AppSpacing.xs),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text('Reported: $formattedDate', style: AppTypography.labelSmall(isDark)),
+              Text('Reported: $formattedDate', style: AppTypography.labelSmall(context)),
               TextButton(
                 onPressed: () => context.go('/cases/${item.id}/track'),
                 child: const Text('Track Details ➔', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
@@ -486,7 +559,7 @@ class RequesterDashboardScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildMilestoneStepper(bool isDark, int currentStep) {
+  Widget _buildMilestoneStepper(BuildContext context, int currentStep) {
     final steps = ['Reported', 'In Progress', 'Resolved', 'Closed'];
 
     return Row(
@@ -498,8 +571,8 @@ class RequesterDashboardScreen extends ConsumerWidget {
             child: Container(
               height: 2,
               color: isCompleted
-                  ? (isDark ? AppColors.accentPrimaryDark : AppColors.accentPrimary)
-                  : (isDark ? AppColors.darkBorder : AppColors.lightBorder),
+                  ? context.accent
+                  : context.border,
             ),
           );
         } else {
@@ -511,13 +584,13 @@ class RequesterDashboardScreen extends ConsumerWidget {
             height: 14,
             decoration: BoxDecoration(
               color: isDone
-                  ? (isDark ? AppColors.accentPrimaryDark : AppColors.accentPrimary)
-                  : (isDark ? AppColors.darkSurfaceElevated : AppColors.lightSurfaceElevated),
+                  ? context.accent
+                  : context.surfaceElevated,
               shape: BoxShape.circle,
               border: Border.all(
                 color: isDone
-                    ? (isDark ? AppColors.accentPrimaryDark : AppColors.accentPrimary)
-                    : (isDark ? AppColors.darkBorder : AppColors.lightBorder),
+                    ? context.accent
+                    : context.border,
                 width: 1.5,
               ),
             ),
